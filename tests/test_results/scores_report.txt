@@ -1,0 +1,580 @@
+========================================================================
+  SQL QUERY SCORER — TEST RESULTS
+  18 queries  |  source: raw_data/parsed_query_logs.db
+========================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GROUP: Single-table / aggregation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▶  AVG dividends by investment_type
+  SQL: SELECT investment_type, AVG(dividends) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'I…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.819  ██████████░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.944  ███████████░
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.500  ██████░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.865  ██████████░░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.802  ██████████░░  mean-top3=0.802
+    #1  combined=0.802  struct=0.830  token=0.750
+         SQL: SELECT investment_type, COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-005' GROUP BY investmen
+    #2  combined=0.802  struct=0.830  token=0.750
+         SQL: SELECT investment_type, COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-005' GROUP BY investmen
+    #3  combined=0.802  struct=0.830  token=0.750
+         SQL: SELECT investment_type, COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-005' GROUP BY investmen
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.840  ██████████░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  COUNT(*) holdings before 2022
+  SQL: SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.611  ███████░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.611  ███████░░░░░
+  Filter Operator                       0.500  ██████░░░░░░
+  Aggregation Pattern                   0.000  ░░░░░░░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.627  ████████░░░░
+    ⚑  [aggregation_pattern] COUNT((*)): 0.00 — combination not seen historically
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.776  █████████░░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  SUM current_value by category
+  SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.750  █████████░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   1.000  ████████████
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.900  ███████████░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.940  ███████████░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Investor profile — no filter
+  SQL: SELECT investor_name FROM ATOM_ENTITY_INVESTOR_PROFILE_001
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       1.000  ████████████
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   1.000  ████████████
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               1.000  ████████████
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.665  ████████░░░░  mean-top3=0.665
+    #1  combined=0.665  struct=0.700  token=0.600
+         SQL: SELECT COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001
+    #2  combined=0.665  struct=0.700  token=0.600
+         SQL: SELECT COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001
+    #3  combined=0.665  struct=0.700  token=0.600
+         SQL: SELECT COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.866  ██████████░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Risk tolerance distribution
+  SQL: SELECT risk_tolerance, COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.941  ███████████░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.000  ░░░░░░░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.776  █████████░░░
+    ⚑  [aggregation_pattern] COUNT((*)): 0.00 — combination not seen historically
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.773  █████████░░░  mean-top3=0.773
+    #1  combined=0.773  struct=0.830  token=0.667
+         SQL: SELECT risk_tolerance, AVG(time_horizon) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance
+    #2  combined=0.773  struct=0.830  token=0.667
+         SQL: SELECT risk_tolerance, AVG(time_horizon) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance
+    #3  combined=0.773  struct=0.830  token=0.667
+         SQL: SELECT risk_tolerance, AVG(time_horizon) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.775  █████████░░░
+  ════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GROUP: Two-table JOIN (known pairs)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▶  investor_name + SUM(current_value) — Gold filter
+  SQL: SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTI…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.963  ████████████
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.767  █████████░░░
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.500  ██████░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.908  ███████████░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.945  ███████████░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  risk_tolerance + holding count
+  SQL: SELECT p.risk_tolerance, COUNT(h.holding_id) AS total_holdings FROM ATOM_ENTITY_PORTFOLIO_HOLDING_00…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.554  ███████░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.500  ██████░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.826  ██████████░░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.911  ███████████░  mean-top3=0.911
+    #1  combined=0.911  struct=0.930  token=0.875
+         SQL: SELECT t2.risk_tolerance, COUNT(t1.holding_id) AS total_holdings
+    #2  combined=0.911  struct=0.930  token=0.875
+         SQL: SELECT t2.risk_tolerance, COUNT(t1.holding_id) AS total_holdings
+    #3  combined=0.911  struct=0.930  token=0.875
+         SQL: SELECT t2.risk_tolerance, COUNT(t1.holding_id) AS total_holdings
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.860  ██████████░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Cash flow SUM by investor
+  SQL: SELECT p.investor_name, SUM(c.amount) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROF…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.917  ███████████░
+  Join Pattern                          0.091  █░░░░░░░░░░░
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.500  ██████░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.752  █████████░░░
+    ⚑  [join_pattern] ATOM_EVENT_CASH_FLOW_001 + ATOM_ENTITY_INVESTOR_PROFILE_001: 0.09 (seen 10x)
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.732  █████████░░░  mean-top3=0.732
+    #1  combined=0.732  struct=0.815  token=0.579
+         SQL: SELECT DISTINCT p.investor_name FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id
+    #2  combined=0.732  struct=0.815  token=0.579
+         SQL: SELECT DISTINCT p.investor_name FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id
+    #3  combined=0.732  struct=0.815  token=0.579
+         SQL: SELECT DISTINCT p.investor_name FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.744  █████████░░░
+  ════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GROUP: Three-table JOIN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▶  Retirement planning across three tables
+  SQL: SELECT p.investor_name, g.investment_goal FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       1.000  ████████████
+  Join Pattern                          0.500  ██████░░░░░░
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   1.000  ████████████
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.889  ███████████░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.826  ██████████░░  mean-top3=0.826
+    #1  combined=0.826  struct=0.867  token=0.750
+         SQL: SELECT t2.investor_name, t1.investment_name
+    #2  combined=0.826  struct=0.867  token=0.750
+         SQL: SELECT t2.investor_name, t1.investment_name
+    #3  combined=0.826  struct=0.867  token=0.750
+         SQL: SELECT t2.investor_name, t1.investment_name
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.864  ██████████░░
+  ════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GROUP: Novel / suspicious patterns
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▶  INVESTMENT_GOAL LEFT JOIN CASH_FLOW — unseen pair
+  SQL: SELECT g.investment_goal, COUNT(*) FROM ATOM_ENTITY_INVESTMENT_GOAL_001 g LEFT JOIN ATOM_EVENT_CASH_…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.875  ██████████░░
+  Join Pattern                          0.111  █░░░░░░░░░░░
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.036  ░░░░░░░░░░░░
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.000  ░░░░░░░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.553  ███████░░░░░
+    ⚑  [join_pattern] ATOM_ENTITY_INVESTMENT_GOAL_001 + ATOM_EVENT_CASH_FLOW_001: 0.11 (seen 5x)
+    ⚑  [filter_familiarity] ATOM_EVENT_CASH_FLOW_001.AMOUNT: 0.04 (filtered 5x historically)
+    ⚑  [aggregation_pattern] COUNT((*)): 0.00 — combination not seen historically
+    ⚑  [aggregation_pattern] COUNT((*)): 0.00 — combination not seen historically
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.492  ██████░░░░░░  mean-top3=0.492
+    #1  combined=0.492  struct=0.522  token=0.435
+         SQL: SELECT AVG(ABS(c.amount)) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON c.investor_id = g.in
+    #2  combined=0.492  struct=0.522  token=0.435
+         SQL: SELECT AVG(ABS(c.amount)) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON c.investor_id = g.in
+    #3  combined=0.492  struct=0.522  token=0.435
+         SQL: SELECT AVG(ABS(c.amount)) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON c.investor_id = g.in
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.528  ██████░░░░░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Completely unknown tables
+  SQL: SELECT x.foo, SUM(x.bar) FROM UNKNOWN_TABLE x JOIN ANOTHER_UNKNOWN y ON x.id = y.id WHERE x.baz = 't…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     0.000  ░░░░░░░░░░░░
+  Column Coverage                       1.000  ████████████
+  Join Pattern                          0.000  ░░░░░░░░░░░░
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.000  ░░░░░░░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.000  ░░░░░░░░░░░░
+    ⚑  [table_familiarity] ✗ UNKNOWN: UNKNOWN_TABLE
+    ⚑  [table_familiarity] ✗ UNKNOWN: ANOTHER_UNKNOWN
+    ⚑  [join_pattern] UNKNOWN_TABLE + ANOTHER_UNKNOWN: 0.00 (NEVER SEEN — high risk)
+    ⚑  [aggregation_pattern] SUM(X): 0.00 — combination not seen historically
+    ⚑  [aggregation_pattern] SUM(BAR): 0.00 — combination not seen historically
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.156  ██░░░░░░░░░░  mean-top3=0.156
+    #1  combined=0.156  struct=0.030  token=0.389
+         SQL: SELECT SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.invest
+    #2  combined=0.156  struct=0.030  token=0.389
+         SQL: SELECT SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.invest
+    #3  combined=0.156  struct=0.030  token=0.389
+         SQL: SELECT SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.invest
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.062  █░░░░░░░░░░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Unseen column on known table
+  SQL: SELECT never_used_col FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE never_used_col = 42
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.000  ░░░░░░░░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.000  ░░░░░░░░░░░░
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   1.000  ████████████
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.364  ████░░░░░░░░
+    ⚑  [column_coverage] ATOM_ENTITY_PORTFOLIO_HOLDING_001.NEVER_USED_COL: 0.00 ✗ (unseen) (seen 0x)
+    ⚑  [filter_familiarity] ATOM_ENTITY_PORTFOLIO_HOLDING_001.NEVER_USED_COL: 0.00 (never filtered on — unusual)
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.584  ███████░░░░░  mean-top3=0.584
+    #1  combined=0.584  struct=0.600  token=0.556
+         SQL: SELECT investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE taxes_paid > 0.1 * current_value
+    #2  combined=0.584  struct=0.600  token=0.556
+         SQL: SELECT investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE taxes_paid > 0.1 * current_value
+    #3  combined=0.584  struct=0.600  token=0.556
+         SQL: SELECT investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE taxes_paid > 0.1 * current_value
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.452  █████░░░░░░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Correct table but unusual aggregation
+  SQL: SELECT STDDEV(current_value), VARIANCE(cost) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.556  ███████░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   1.000  ████████████
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.778  █████████░░░
+    ⚑  [column_coverage] ATOM_ENTITY_PORTFOLIO_HOLDING_001.VARIANCE: 0.00 ✗ (unseen) (seen 0x)
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.615  ███████░░░░░  mean-top3=0.615
+    #1  combined=0.615  struct=0.750  token=0.364
+         SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+    #2  combined=0.615  struct=0.750  token=0.364
+         SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+    #3  combined=0.615  struct=0.750  token=0.364
+         SQL: SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.713  █████████░░░
+  ════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GROUP: Filter / operator patterns
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▶  LIKE filter on investment_name
+  SQL: SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.657  ████████░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.535  ██████░░░░░░
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   1.000  ████████████
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.803  ██████████░░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investm
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investm
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investm
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.882  ███████████░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  BETWEEN on purchase_date
+  SQL: SELECT investment_type, SUM(cost) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.569  ███████░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.361  ████░░░░░░░░
+  Filter Operator                       0.500  ██████░░░░░░
+  Aggregation Pattern                   0.524  ██████░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.636  ████████░░░░
+    ⚑  [filter_familiarity] ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 0.61 (filtered 55x historically)
+    ⚑  [filter_familiarity] ATOM_ENTITY_PORTFOLIO_HOLDING_001.BETWEEN: 0.11 (filtered 10x historically)
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=0.659  ████████░░░░  mean-top3=0.659
+    #1  combined=0.659  struct=0.730  token=0.526
+         SQL: SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31' GROU
+    #2  combined=0.659  struct=0.730  token=0.526
+         SQL: SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31' GROU
+    #3  combined=0.659  struct=0.730  token=0.526
+         SQL: SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31' GROU
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.645  ████████░░░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  SIP cash flows with HAVING
+  SQL: SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUN…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.536  ██████░░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.571  ███████░░░░░
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.000  ░░░░░░░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.633  ████████░░░░
+    ⚑  [aggregation_pattern] COUNT((*)): 0.00 — combination not seen historically
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.780  █████████░░░
+  ════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  GROUP: Subquery / CTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▶  Dividend cash flows last 6 months (subquery)
+  SQL: SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.300  ████░░░░░░░░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    0.300  ████░░░░░░░░
+  Filter Operator                       0.043  █░░░░░░░░░░░
+  Aggregation Pattern                   0.000  ░░░░░░░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.439  █████░░░░░░░
+    ⚑  [column_coverage] ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 ✓ (seen 140x)
+    ⚑  [column_coverage] ATOM_EVENT_CASH_FLOW_001.LIKE: 0.04 ✓ (seen 5x)
+    ⚑  [column_coverage] ATOM_EVENT_CASH_FLOW_001.DIVIDEND: 0.29 ✓ (seen 40x)
+    ⚑  [column_coverage] ATOM_EVENT_CASH_FLOW_001.ATOM_EVENT_CASH_FLOW_001: 0.07 ✓ (seen 10x)
+    ⚑  [filter_familiarity] ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 (filtered 140x historically)
+    ⚑  [filter_familiarity] ATOM_EVENT_CASH_FLOW_001.LIKE: 0.04 (filtered 5x historically)
+    ⚑  [filter_familiarity] ATOM_EVENT_CASH_FLOW_001.DIVIDEND: 0.29 (filtered 40x historically)
+    ⚑  [filter_familiarity] ATOM_EVENT_CASH_FLOW_001.ATOM_EVENT_CASH_FLOW_001: 0.07 (filtered 10x historically)
+    ⚑  [filter_operator] TYPE LIKE: 0.04 (5x for TYPE)
+    ⚑  [aggregation_pattern] MAX((*)): 0.00 — combination not seen historically
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date) FROM ATOM_EVENT_CA
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date) FROM ATOM_EVENT_CA
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date) FROM ATOM_EVENT_CA
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.663  ████████░░░░
+  ════════════════════════════════════════════════════════════════════
+
+  ▶  Highest avg cost investment_type (subquery)
+  SQL: SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(…
+
+  ────────────────────────────────────────────────────────────────────
+  PROBABILITY SCORES                    Score  Bar
+  ────────────────────────────────────────────────────────────────────
+  Table Familiarity                     1.000  ████████████
+  Column Coverage                       0.889  ███████████░
+  Join Pattern                          1.000  ████████████
+  Join Key Validity                     1.000  ████████████
+  Filter Familiarity                    1.000  ████████████
+  Filter Operator                       1.000  ████████████
+  Aggregation Pattern                   0.500  ██████░░░░░░
+  ────────────────────────────────────────────────────────────────────
+  OVERALL                               0.856  ██████████░░
+
+  ────────────────────────────────────────────────────────────────────
+  NEAR-MATCH   best=1.000  ████████████  mean-top3=1.000
+    #1  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) DESC LIMIT 1
+    #2  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) DESC LIMIT 1
+    #3  combined=1.000  struct=1.000  token=1.000
+         SQL: SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) DESC LIMIT 1
+
+  ════════════════════════════════════════════════════════════════════
+  CONSOLIDATED SCORE  (60% prob + 40% near-match)   0.913  ███████████░
+  ════════════════════════════════════════════════════════════════════
+
+========================================================================
