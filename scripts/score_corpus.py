@@ -25,11 +25,35 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 import score_query as sq  # noqa: E402
+from concurrent.futures import ThreadPoolExecutor  # noqa: E402
 
 OUT_PATH = Path("reports/corpus_scores.json")
+LLM_CACHE_PATH = Path("reports/llm_cache.json")
+MAX_WORKERS = 12
 
 
-def build(use_llm: bool = True, limit: int | None = None, progress=None) -> dict:
+def load_llm_cache(model: str) -> dict[str, int]:
+    """Persistent LLM verdicts keyed by normalized SQL. Invalidated if the model changed,
+    so we never reuse a different model's scores."""
+    if not LLM_CACHE_PATH.exists():
+        return {}
+    try:
+        data = json.loads(LLM_CACHE_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    if data.get("llm_model") != model:
+        return {}                                # model changed -> stale, recompute
+    return {k: v for k, v in data.get("verdicts", {}).items() if v is not None}
+
+
+def save_llm_cache(verdicts: dict[str, int], model: str) -> None:
+    LLM_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LLM_CACHE_PATH.write_text(
+        json.dumps({"llm_model": model, "verdicts": verdicts}, indent=2), encoding="utf-8")
+
+
+def build(use_llm: bool = True, limit: int | None = None, progress=None,
+          use_cache: bool = True) -> dict:
     stats      = sq.load_stats(sq.DB_PATH)
     schema     = sq.load_schema()
     ref_corpus = sq.load_corpus(sq.DB_PATH)               # deduped reference for near-match
@@ -45,33 +69,63 @@ def build(use_llm: bool = True, limit: int | None = None, progress=None) -> dict
         rows = rows[:limit]
 
     api_ok = use_llm and bool(os.environ.get("OPENAI_API_KEY"))
-    llm_cache: dict[str, int | None] = {}                 # normalized SQL -> LLM overall
-    n_llm_calls = 0
-    out: list[dict] = []
 
-    for i, (qnum, qid, uid, start, dur, nrows, title, sql) in enumerate(rows, 1):
+    # 1) Fast pass: parse + probability + near-match for every row (no API).
+    parsed = []
+    for (qnum, qid, uid, start, dur, nrows, title, sql) in rows:
         info = sq.parse_query(sql)
-        prob = sq.score_probability(info, stats, schema)
-        nm   = sq.score_near_match(sql, info, ref_corpus, top_n=5)
+        parsed.append({
+            "info": info,
+            "prob": sq.score_probability(info, stats, schema),
+            "nm":   sq.score_near_match(sql, info, ref_corpus, top_n=5),
+            "key":  sq._normalize_sql(sql),
+            "raw":  (qnum, qid, uid, start, dur, nrows, title, sql),
+        })
 
-        llm_overall = None
-        if api_ok:
-            key = sq._normalize_sql(sql)
-            if key not in llm_cache:
-                rep = None
-                try:
-                    rep = sq.score_llm(sql, info, sections, stats)
-                except Exception:                          # noqa: BLE001
-                    rep = None
-                llm_cache[key] = rep.overall if rep else None
-                if rep is not None:
-                    n_llm_calls += 1
-            llm_overall = llm_cache[key]
+    # 2) LLM pass: reuse the persistent cache; call the API ONLY for unseen patterns,
+    #    and run those misses in parallel.
+    verdicts: dict[str, int] = load_llm_cache(sq.LLM_MODEL) if (api_ok and use_cache) else {}
+    n_new_calls = 0
+    if api_ok:
+        misses = {}                                       # key -> (sql, info)  (unique only)
+        for p in parsed:
+            if p["key"] not in verdicts and p["key"] not in misses:
+                misses[p["key"]] = (p["raw"][7], p["info"])
 
+        def _call(item):
+            key, (sql, info) = item
+            try:
+                rep = sq.score_llm(sql, info, sections, stats)
+                return key, (rep.overall if rep else None)
+            except Exception:                              # noqa: BLE001
+                return key, None
+
+        total = len(misses)
+        if total == 0 and progress is not None:
+            progress(1, 1, 0)                              # all cached -> instant
+        done = 0
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
+            for key, overall in ex.map(_call, list(misses.items())):
+                done += 1
+                if overall is not None:
+                    verdicts[key] = overall
+                    n_new_calls += 1
+                if progress is not None:
+                    progress(done, total, n_new_calls)
+                elif done % 25 == 0 or done == total:
+                    print(f"  LLM {done}/{total} new calls…", flush=True)
+        if use_cache:
+            save_llm_cache(verdicts, sq.LLM_MODEL)
+
+    # 3) Assemble rows (LLM verdict looked up from cache by normalized SQL).
+    out: list[dict] = []
+    for p in parsed:
+        (qnum, qid, uid, start, dur, nrows, title, sql) = p["raw"]
+        info, prob, nm = p["info"], p["prob"], p["nm"]
+        llm_overall = verdicts.get(p["key"]) if api_ok else None
         llm_norm = (llm_overall / 100.0) if llm_overall is not None else None
         consolidated = sq.consolidate(prob.overall, nm.score, llm_norm)
         flags = sq.collect_flags(info, prob, schema)
-
         out.append({
             "query_num": qnum, "query_id": qid, "userid": uid,
             "start_time": start, "duration_ms": dur, "rows_returned": nrows,
@@ -89,15 +143,12 @@ def build(use_llm: bool = True, limit: int | None = None, progress=None) -> dict
             "n_flags": len(flags),
             "flags": flags,
         })
-        if progress is not None:
-            progress(i, len(rows), n_llm_calls)
-        elif i % 100 == 0:
-            print(f"  {i}/{len(rows)}  ({n_llm_calls} unique LLM calls)", flush=True)
 
     return {
         "meta": {
             "n_rows": len(out),
-            "n_llm_calls": n_llm_calls,
+            "n_llm_calls": n_new_calls,                    # NEW API calls this run (cache hits excluded)
+            "n_llm_cached": (len(verdicts) - n_new_calls) if api_ok else 0,
             "llm_used": api_ok,
             "llm_model": sq.LLM_MODEL,
         },
@@ -108,16 +159,20 @@ def build(use_llm: bool = True, limit: int | None = None, progress=None) -> dict
 def main() -> None:
     p = argparse.ArgumentParser(description="Precompute corpus scores for the dashboard")
     p.add_argument("--no-llm", action="store_true", help="Skip LLM scoring")
+    p.add_argument("--no-cache", action="store_true", help="Ignore the persistent LLM cache (force fresh calls)")
     p.add_argument("--limit", type=int, default=None, help="Only score the first N queries")
     p.add_argument("--out", type=Path, default=OUT_PATH)
     args = p.parse_args()
 
-    print(f"Scoring corpus (llm={'off' if args.no_llm else 'on'})…", flush=True)
-    data = build(use_llm=not args.no_llm, limit=args.limit)
+    print(f"Scoring corpus (llm={'off' if args.no_llm else 'on'}, "
+          f"cache={'off' if args.no_cache else 'on'})…", flush=True)
+    data = build(use_llm=not args.no_llm, limit=args.limit, use_cache=not args.no_cache)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    print(f"Wrote {data['meta']['n_rows']} rows → {args.out}  "
-          f"({data['meta']['n_llm_calls']} unique LLM calls, model={data['meta']['llm_model']})")
+    m = data["meta"]
+    print(f"Wrote {m['n_rows']} rows → {args.out}  "
+          f"({m['n_llm_calls']} new LLM calls, {m['n_llm_cached']} reused from cache, "
+          f"model={m['llm_model']})")
 
 
 if __name__ == "__main__":

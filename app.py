@@ -276,11 +276,15 @@ with tab_dash:
     rc1, rc2 = st.columns([3, 1])
     with rc2:
         if st.button("↻ Recompute scores", width="stretch",
-                     help="Re-score the whole corpus. Includes LLM only if the sidebar "
-                          "toggle is ON (otherwise Prob+Near only)."):
+                     help="Re-score the corpus. Reuses cached LLM verdicts; only NEW query "
+                          "patterns call the API (and those run in parallel). Includes LLM "
+                          "only if the sidebar toggle is ON."):
             prog = st.progress(0.0, text="Scoring…")
-            def _cb(i, n, ncalls):
-                prog.progress(i / n, text=f"Scoring {i}/{n}  ({ncalls} LLM calls)")
+            def _cb(done, total, ncalls):
+                frac = done / total if total else 1.0
+                msg = (f"Calling LLM for {total} new patterns… {done}/{total}"
+                       if total else "Reusing cached LLM verdicts — finishing up…")
+                prog.progress(min(frac, 1.0), text=msg)
             payload = score_corpus.build(use_llm=use_llm, progress=_cb)
             CORPUS_SCORES_PATH.parent.mkdir(parents=True, exist_ok=True)
             CORPUS_SCORES_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -300,9 +304,14 @@ with tab_dash:
     has_llm = df["llm"].notna().any()
     meta = data["meta"]
 
-    rc1.markdown(
-        f"**{meta['n_rows']}** logged queries · LLM: "
-        f"{'`'+meta['llm_model']+'` ('+str(meta['n_llm_calls'])+' unique calls)' if meta['llm_used'] else 'not computed'}")
+    if meta["llm_used"]:
+        n_new = meta.get("n_llm_calls", 0)
+        n_cached = meta.get("n_llm_cached", 0)
+        llm_str = (f"`{meta['llm_model']}` · {n_new + n_cached} patterns scored "
+                   f"({n_new} new, {n_cached} reused from cache)")
+    else:
+        llm_str = "not computed (toggle **Use LLM scoring** on, then Recompute)"
+    rc1.markdown(f"**{meta['n_rows']}** logged queries · LLM: {llm_str}")
 
     # ---- filters ----
     with st.expander("🔧 Filters", expanded=False):
