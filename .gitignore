@@ -3,6 +3,10 @@
 __pycache__/
 *.pyc
 *.db
-reports/
+# Ignore reports/ EXCEPT the derived score caches, so the dashboard works on a fresh clone.
+reports/*
+!reports/corpus_scores.json
+!reports/llm_cache.json
+!reports/discrimination_eval.json
 .DS_Store
 .claude/settings.local.json

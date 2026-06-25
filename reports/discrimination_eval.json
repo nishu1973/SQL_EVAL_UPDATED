@@ -1,0 +1,519 @@
+{
+  "summary": {
+    "Probability": {
+      "mean_good": 0.9230934701532127,
+      "mean_bad": 0.5725403384494293,
+      "auc": 0.9028409090909091
+    },
+    "Near-match": {
+      "mean_good": 0.9285844932714952,
+      "mean_bad": 0.4916194544116976,
+      "auc": 1.0
+    },
+    "LLM": {
+      "mean_good": 0.7862500000000001,
+      "mean_bad": 0.6022727272727272,
+      "auc": 0.7517045454545455
+    }
+  },
+  "rows": [
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3",
+      "probability": 0.9285714285714287,
+      "near_match": 0.9547839592760181,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT p.investor_name, h.liquidity_score FROM ATOM_ENTITY_SECTOR_ALLOCATION_001 s JOIN ATOM_ENTITY_PORTFOLIO_HEALTH_001 h ON s.investor_id = h.investor_id JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON s.investor_id = p.investor_id WHERE s.sector = 'Technology' AND s.allocation_pct > 40",
+      "probability": 0.8227272727272728,
+      "near_match": 0.8801833333333333,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investment_type, AVG(dividends) as average_dividends FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY average_dividends ASC LIMIT 1",
+      "probability": 1.0,
+      "near_match": 0.96324,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-005' AND (investment_name LIKE '%Gold%' OR investment_type LIKE '%Gold%')",
+      "probability": 0.9214285714285715,
+      "near_match": 0.9366546153846154,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT \n      CASE \n        WHEN new_allocation_pct > current_allocation_pct THEN 'Increase'\n        WHEN new_allocation_pct < current_allocation_pct THEN 'Decrease'\n        ELSE 'No Change'\n      END AS change_direction,\n      COUNT(*) AS scenario_rebalance_count,\n      AVG(new_allocation_pct) AS average_new_allocation_pct\n    FROM ATOM_EVENT_SCENARIO_REBALANCING_001\n    GROUP BY change_direction",
+      "probability": 0.93,
+      "near_match": 0.8994938461538462,
+      "llm": 0.88
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT t2.risk_tolerance, AVG(t1.target_amount) AS average_target_amount\n    FROM ATOM_ENTITY_INVESTMENT_GOAL_001 t1\n    JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 t2 ON t1.investor_id = t2.investor_id\n    GROUP BY t2.risk_tolerance",
+      "probability": 0.8522727272727273,
+      "near_match": 0.9551225000000001,
+      "llm": 0.85
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT SUM(t2.amount) FROM ATOM_EVENT_REBALANCING_ACTION_001 t2 JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 t1 ON t2.investor_id = t1.investor_id WHERE t2.action LIKE '%Buy%' AND t1.investment_goal = 'Growth'",
+      "probability": 0.7874097593582886,
+      "near_match": 0.8866499999999999,
+      "llm": 0.75
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT DISTINCT h.investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_EVENT_REBALANCING_ACTION_001 r ON h.investor_id = r.investor_id WHERE h.sector = 'Technology' AND r.action LIKE  '%SelL%'",
+      "probability": 0.768164983164983,
+      "near_match": 0.9229095433436532,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT segment, SUM(cost) as total_invested_amount FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY segment ORDER BY total_invested_amount DESC LIMIT 1",
+      "probability": 0.9222222222222223,
+      "near_match": 0.9277697058823529,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT dividends FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 ORDER BY dividends DESC LIMIT 1 OFFSET 4",
+      "probability": 1.0,
+      "near_match": 0.9456202797202797,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT sector, MAX(total_investment) AS max_total_investment FROM ATOM_ENTITY_SECTOR_ALLOCATION_001 GROUP BY sector",
+      "probability": 1.0,
+      "near_match": 0.8865733333333333,
+      "llm": 0.9
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investor_id ORDER BY AVG(julianday('now') - julianday(purchase_date)) DESC LIMIT 1",
+      "probability": 0.9,
+      "near_match": 0.9509749999999999,
+      "llm": 0.85
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investment_type, AVG(taxes_paid) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type",
+      "probability": 0.9844444444444445,
+      "near_match": 0.9557366666666667,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT \n      CASE \n        WHEN (goal_match_pct * 0.3 + risk_score * 0.3 + liquidity_score * 0.2 + diversification_score * 0.2) >= 80 THEN 'Healthy'\n        WHEN (goal_match_pct * 0.3 + risk_score * 0.3 + liquidity_score * 0.2 + diversification_score * 0.2) >= 60 THEN 'Moderate'\n        WHEN (goal_match_pct * 0.3 + risk_score * 0.3 + liquidity_score * 0.2 + diversification_score * 0.2) >= 40 THEN 'At Risk'\n        ELSE 'Critical'\n      END AS health_status,\n      COUNT(*) AS portfolio_count,\n      AVG((goal_match_pct * 0.3 + risk_score * 0.3 + liquidity_score * 0.2 + diversification_score * 0.2)) AS average_score\n    FROM ATOM_ENTITY_PORTFOLIO_HEALTH_001\n    GROUP BY health_status",
+      "probability": 0.93,
+      "near_match": 0.8635565942028985,
+      "llm": 0.85
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT p.investor_name, (h.goal_match_pct * 0.3 + h.risk_score * 0.3 + h.liquidity_score * 0.2 + h.diversification_score * 0.2) as health_score FROM ATOM_ENTITY_PORTFOLIO_HEALTH_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.investor_id = p.investor_id JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON p.investor_id = g.investor_id WHERE g.investment_goal = 'Child Education' AND g.progress_pct < 0.5",
+      "probability": 0.8565656565656565,
+      "near_match": 0.8939111835748792,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT SUM(cost) as total_cost FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date LIKE '2022-%'",
+      "probability": 1.0,
+      "near_match": 0.9282534037701429,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT SUM(cost) as total_cost FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE category = 'MF' OR investment_type = 'Mutual Fund'",
+      "probability": 1.0,
+      "near_match": 0.9343980769230769,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT sector_focus, COUNT(investor_id) AS investor_count FROM ATOM_ENTITY_INVESTOR_PROFILE_001 WHERE sector_focus IS NOT NULL GROUP BY sector_focus",
+      "probability": 0.903046218487395,
+      "near_match": 0.9004489705882353,
+      "llm": 0.88
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investor_id,  AVG(amount) as total_div FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'Dividend' GROUP BY investor_id",
+      "probability": 1.0,
+      "near_match": 0.9613357352941176,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT DISTINCT p.investor_name FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id = p.investor_id WHERE c.type = 'SIP' AND c.date LIKE '2024-01%'",
+      "probability": 0.7979797979797979,
+      "near_match": 0.8984517156862745,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT sector FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY sector ORDER BY SUM(taxes_paid) DESC LIMIT 1",
+      "probability": 1.0,
+      "near_match": 0.9711784615384615,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT SUM(current_value) as total_current_value FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE category = 'MF' OR investment_type = 'Mutual Fund'",
+      "probability": 1.0,
+      "near_match": 0.9526973076923078,
+      "llm": 0.85
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT strftime('%Y-%m', date) as transaction_month, SUM(amount) as total_cash_flow FROM ATOM_EVENT_CASH_FLOW_001 WHERE investor_id = 'INV-003' GROUP BY transaction_month",
+      "probability": 1.0,
+      "near_match": 0.9522635650623886,
+      "llm": 0.9
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT category FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category ORDER BY AVG(taxes_paid) ASC LIMIT 1",
+      "probability": 1.0,
+      "near_match": 0.9610384615384615,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT AVG(ABS(c.amount)) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON c.investor_id = g.investor_id WHERE c.type = 'Withdrawal' AND g.progress_pct >= 1.0",
+      "probability": 0.8222222222222221,
+      "near_match": 0.8733923993808049,
+      "llm": 0.72
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT SUM(dividends) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-003'",
+      "probability": 1.0,
+      "near_match": 0.939825,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_INVESTMENT_GOAL_001 WHERE investment_goal = 'Child Education' AND progress_pct < 50",
+      "probability": 1.0,
+      "near_match": 0.8965615384615384,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT SUM(amount) FROM ATOM_EVENT_CASH_FLOW_001 WHERE investor_id = 'INV-012' AND type = 'Lump Sum'",
+      "probability": 1.0,
+      "near_match": 0.9526191711229947,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investment_type LIKE '%Gold%' GROUP BY investor_id ORDER BY SUM(current_value) DESC LIMIT 1",
+      "probability": 0.9916666666666666,
+      "near_match": 0.944994019138756,
+      "llm": 0.75
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT AVG(new_allocation_pct) FROM ATOM_EVENT_SCENARIO_REBALANCING_001 WHERE new_allocation_pct = current_allocation_pct",
+      "probability": 1.0,
+      "near_match": 0.9405249999999999,
+      "llm": 0.8
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(taxes_paid) DESC LIMIT 1",
+      "probability": 1.0,
+      "near_match": 0.9761176923076923,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT t1.investor_id FROM ATOM_ENTITY_PORTFOLIO_HEALTH_001 t1 JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 t2 ON t1.investor_id = t2.investor_id WHERE t2.investment_goal = 'Child Education' AND t2.progress_pct < 50 ORDER BY (t1.goal_match_pct * 0.3 + t1.risk_score * 0.3 + t1.liquidity_score * 0.2 + t1.diversification_score * 0.2) ASC LIMIT 1",
+      "probability": 0.8518518518518517,
+      "near_match": 0.9019116666666667,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT COUNT(*) FROM (SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investor_id HAVING SUM(taxes_paid) > 500000)",
+      "probability": 0.8833333333333332,
+      "near_match": 0.9204921052631578,
+      "llm": 0.65
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT DISTINCT t1.investor_id, t1.investment_name FROM\n     ATOM_ENTITY_PORTFOLIO_HOLDING_001 t1 JOIN ATOM_EVENT_REBALANCING_ACTION_001\n     t2 ON t1.investor_id = t2.investor_id WHERE t1.sector = 'Technology' AND\n     t2.action LIKE '%Sell%'",
+      "probability": 0.768164983164983,
+      "near_match": 0.9110411609907121,
+      "llm": 0.68
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT sector, SUM(dividends) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY sector",
+      "probability": 1.0,
+      "near_match": 0.9505033333333333,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT \n      CASE \n        WHEN current_allocation_pct > target_allocation_pct THEN 'Overweight'\n        WHEN current_allocation_pct < target_allocation_pct THEN 'Underweight'\n        ELSE 'On Target'\n      END AS drift_direction,\n      COUNT(*) AS rebalancing_action_count\n    FROM ATOM_EVENT_REBALANCING_ACTION_001\n    GROUP BY drift_direction",
+      "probability": 0.75,
+      "near_match": 0.8797218181818182,
+      "llm": 0.87
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT sector FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY sector ORDER BY SUM(taxes_paid) ASC LIMIT 1",
+      "probability": 1.0,
+      "near_match": 0.9711784615384615,
+      "llm": 0.7
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT r.investor_id, (r.current_allocation_pct - r.target_allocation_pct) as deviation FROM ATOM_EVENT_REBALANCING_ACTION_001 r WHERE r.action LIKE '%Sell%'",
+      "probability": 0.6516666666666666,
+      "near_match": 0.9160441258741259,
+      "llm": 0.85
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT investor_id, AVG(julianday('2026-04-28') - julianday(purchase_date)) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investor_id",
+      "probability": 0.9,
+      "near_match": 0.9459995693779903,
+      "llm": 0.82
+    },
+    {
+      "label": "good",
+      "kind": "good",
+      "sql": "SELECT COUNT(DISTINCT category) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-012'",
+      "probability": 1.0,
+      "near_match": 0.9392064102564103,
+      "llm": 0.78
+    },
+    {
+      "label": "bad",
+      "kind": "unknown_table",
+      "sql": "SELECT customer_name FROM ATOM_ENTITY_CUSTOMER_001 WHERE region = 'West'",
+      "probability": 0.0,
+      "near_match": 0.30173636363636364,
+      "llm": 0.05
+    },
+    {
+      "label": "bad",
+      "kind": "unknown_table",
+      "sql": "SELECT SUM(amount) FROM ATOM_EVENT_TRANSACTION_001 WHERE status = 'DONE'",
+      "probability": 0.0,
+      "near_match": 0.3302123076923077,
+      "llm": 0.2
+    },
+    {
+      "label": "bad",
+      "kind": "unknown_table",
+      "sql": "SELECT account_balance FROM ATOM_ENTITY_ACCOUNT_001 WHERE type = 'Savings'",
+      "probability": 0.0,
+      "near_match": 0.30693333333333334,
+      "llm": 0.0
+    },
+    {
+      "label": "bad",
+      "kind": "unknown_table",
+      "sql": "SELECT a.id FROM TRADES a JOIN PAYMENTS b ON a.id = b.tid",
+      "probability": 0.0,
+      "near_match": 0.24146944788441693,
+      "llm": 0.0
+    },
+    {
+      "label": "bad",
+      "kind": "hallucinated_col",
+      "sql": "SELECT profit_margin FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE profit_margin > 10",
+      "probability": 0.36363636363636365,
+      "near_match": 0.5734565656565658,
+      "llm": 0.75
+    },
+    {
+      "label": "bad",
+      "kind": "hallucinated_col",
+      "sql": "SELECT ticker_symbol, current_value FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001",
+      "probability": 0.65,
+      "near_match": 0.6434380730380731,
+      "llm": 0.8
+    },
+    {
+      "label": "bad",
+      "kind": "hallucinated_col",
+      "sql": "SELECT investor_name, email FROM ATOM_ENTITY_INVESTOR_PROFILE_001 WHERE email LIKE '%@x.com'",
+      "probability": 0.4727272727272727,
+      "near_match": 0.5387028205128206,
+      "llm": 0.8
+    },
+    {
+      "label": "bad",
+      "kind": "hallucinated_col",
+      "sql": "SELECT credit_score FROM ATOM_ENTITY_PORTFOLIO_HEALTH_001 WHERE credit_score > 700",
+      "probability": 0.36363636363636365,
+      "near_match": 0.5127602564102565,
+      "llm": 0.6
+    },
+    {
+      "label": "bad",
+      "kind": "hallucinated_col",
+      "sql": "SELECT pe_ratio FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE pe_ratio < 15",
+      "probability": 0.36363636363636365,
+      "near_match": 0.5734565656565658,
+      "llm": 0.8
+    },
+    {
+      "label": "bad",
+      "kind": "unseen_join",
+      "sql": "SELECT s.sector, SUM(c.amount) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_SECTOR_ALLOCATION_001 s ON c.investor_id = s.investor_id GROUP BY s.sector",
+      "probability": 0.7499999999999999,
+      "near_match": 0.45860271132376396,
+      "llm": 0.75
+    },
+    {
+      "label": "bad",
+      "kind": "unseen_join",
+      "sql": "SELECT r.action, sr.scenario FROM ATOM_EVENT_REBALANCING_ACTION_001 r JOIN ATOM_EVENT_SCENARIO_REBALANCING_001 sr ON r.investor_id = sr.investor_id",
+      "probability": 0.8095238095238094,
+      "near_match": 0.5280360526315789,
+      "llm": 0.9
+    },
+    {
+      "label": "bad",
+      "kind": "unseen_join",
+      "sql": "SELECT h.investment_type, sr.scenario FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_EVENT_SCENARIO_REBALANCING_001 sr ON h.investor_id = sr.investor_id",
+      "probability": 0.7142857142857142,
+      "near_match": 0.39841666666666664,
+      "llm": 0.7
+    },
+    {
+      "label": "bad",
+      "kind": "wrong_join_key",
+      "sql": "SELECT h.investment_name, p.investor_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.sector = p.sector_focus",
+      "probability": 0.9285714285714287,
+      "near_match": 0.6644145665634673,
+      "llm": 0.8
+    },
+    {
+      "label": "bad",
+      "kind": "wrong_join_key",
+      "sql": "SELECT h.cost, g.target_amount FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON h.category = g.investment_goal",
+      "probability": 0.6688311688311688,
+      "near_match": 0.40334850877192985,
+      "llm": 0.7
+    },
+    {
+      "label": "bad",
+      "kind": "weird_agg",
+      "sql": "SELECT SUM(purchase_date) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001",
+      "probability": 0.9,
+      "near_match": 0.648210606060606,
+      "llm": 0.55
+    },
+    {
+      "label": "bad",
+      "kind": "weird_agg",
+      "sql": "SELECT AVG(investor_name) FROM ATOM_ENTITY_INVESTOR_PROFILE_001",
+      "probability": 0.9,
+      "near_match": 0.6251194871794872,
+      "llm": 0.6
+    },
+    {
+      "label": "bad",
+      "kind": "weird_agg",
+      "sql": "SELECT MAX(risk_tolerance), MIN(sector_focus) FROM ATOM_ENTITY_INVESTOR_PROFILE_001",
+      "probability": 0.9,
+      "near_match": 0.6257471445221445,
+      "llm": 0.8
+    },
+    {
+      "label": "bad",
+      "kind": "nonsense_filter",
+      "sql": "SELECT investor_name FROM ATOM_ENTITY_INVESTOR_PROFILE_001 WHERE investor_name > 5000",
+      "probability": 0.8636363636363636,
+      "near_match": 0.5282124786324787,
+      "llm": 0.7
+    },
+    {
+      "label": "bad",
+      "kind": "nonsense_filter",
+      "sql": "SELECT current_value FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE holding_id LIKE '%xyz%'",
+      "probability": 0.8212121212121213,
+      "near_match": 0.6568945454545454,
+      "llm": 0.85
+    },
+    {
+      "label": "bad",
+      "kind": "complex_subtle",
+      "sql": "SELECT p.investor_name, s.sector, sr.scenario FROM ATOM_ENTITY_INVESTOR_PROFILE_001 p JOIN ATOM_ENTITY_SECTOR_ALLOCATION_001 s ON p.investor_id = s.investor_id JOIN ATOM_EVENT_SCENARIO_REBALANCING_001 sr ON s.sector = sr.affected_assets_sectors",
+      "probability": 0.735064935064935,
+      "near_match": 0.4625847090689106,
+      "llm": 0.6
+    },
+    {
+      "label": "bad",
+      "kind": "complex_subtle",
+      "sql": "SELECT h.investment_name, c.type, r.action FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_EVENT_CASH_FLOW_001 c ON h.investor_id = c.investor_id JOIN ATOM_EVENT_REBALANCING_ACTION_001 r ON c.source = r.logic",
+      "probability": 0.7220779220779221,
+      "near_match": 0.4456723684210526,
+      "llm": 0.6
+    },
+    {
+      "label": "bad",
+      "kind": "complex_subtle",
+      "sql": "SELECT g.investment_goal, s.sector, hh.risk_score FROM ATOM_ENTITY_INVESTMENT_GOAL_001 g JOIN ATOM_ENTITY_SECTOR_ALLOCATION_001 s ON g.target_amount = s.total_investment JOIN ATOM_ENTITY_PORTFOLIO_HEALTH_001 hh ON s.investor_id = hh.investor_id",
+      "probability": 0.669047619047619,
+      "near_match": 0.34820241794001133,
+      "llm": 0.7
+    }
+  ],
+  "llm_model": "gpt-4o-mini",
+  "llm_used": true
+}
