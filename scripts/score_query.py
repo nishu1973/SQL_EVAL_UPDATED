@@ -879,50 +879,57 @@ def score_llm(sql: str, info: QueryInfo, table_sections: dict, stats: dict,
 
     context = "\n\n".join(ctx_parts)
 
-    prompt = f"""You are a SQL quality analyst. You have access to historical query pattern analysis
-for a wealth management platform and must score whether a new SQL query follows established patterns.
+    system_msg = (
+        "You are a STRICT SQL conformance auditor for a wealth-management analytics platform. "
+        "Your job is to DISCRIMINATE between queries that match historical analyst behaviour and "
+        "those that deviate — not to rubber-stamp them. Use the FULL 0-100 range and score "
+        "conservatively: 100 means a query is essentially indistinguishable from the MOST COMMON "
+        "historical queries, which is rare. Most realistic queries have at least a minor deviation "
+        "and should land below 90. Never default to 100. First record concrete observations, then "
+        "assign every score strictly from this rubric:\n"
+        "  90-100  Textbook: known tables; historically frequent columns, joins, aggregations; nothing unusual.\n"
+        "  70-89   Valid, minor deviation: a less-common column/filter/ordering — still clearly normal.\n"
+        "  40-69   Notably unusual (may still be valid): a rare or never-seen join pair, an atypical "
+        "filter column, or an uncommon aggregation.\n"
+        "  10-39   Likely wrong: combinations unsupported by the history, or structurally odd usage.\n"
+        "  0-9     Invalid: unknown/hallucinated tables or columns that do not exist.\n"
+        "Calibration anchors:\n"
+        "  - investor_name + SUM(current_value), holdings JOIN profile, GROUP BY name  -> ~95\n"
+        "  - investment_goal LEFT JOIN cash_flow (a pair almost never joined)          -> ~55\n"
+        "  - SELECT made_up_col FROM a real table (column absent from schema)           -> ~15\n"
+        "  - SELECT ... FROM UNKNOWN_TABLE                                              -> ~5"
+    )
 
-## Historical Pattern Context
+    user_msg = f"""## Historical pattern context
 {context}
 
-## Query to Score
+## Query to score
 ```sql
 {sql}
 ```
+Parsed — tables: {info.tables} | join pairs: {info.join_pairs} | WHERE cols: {dict(info.where_cols)} | aggregations: {info.agg_pairs}
 
-## Tables used: {info.tables}
-## Join pairs: {info.join_pairs}
-## WHERE columns: {dict(info.where_cols)}
-## Aggregations: {info.agg_pairs}
+Work in THIS order and return ONLY a JSON object:
+1. observations — 2-5 concrete notes naming the ACTUAL tables/columns/joins: what conforms, and what deviates from the context above.
+2. subscores (0-100 each, per the rubric): table_familiarity, column_relevance, join_conformance, filter_conformance, aggregation_conformance.
+3. overall (0-100) — justified by the observations and rubric, NOT a default high value.
+4. flags — specific anomalies (e.g. "never-seen join: GOAL x CASH_FLOW"); empty list if none.
+5. reasoning — 2-4 sentences citing specific tables/columns/joins.
 
-Score this query on the following dimensions (0–100 each, where 100 = perfectly follows historical patterns):
-
-1. **table_familiarity**: Are the tables used known from historical logs?
-2. **column_relevance**: Are the SELECT and WHERE columns the historically important ones for these tables?
-3. **join_conformance**: Do the join pairs and join keys match historical patterns?
-4. **filter_conformance**: Are the WHERE conditions (columns + operators + values) consistent with history?
-5. **aggregation_conformance**: Are the aggregation functions applied to the right columns?
-6. **overall**: Holistic score considering all dimensions.
-
-Return ONLY a JSON object in this exact format:
 {{
-  "subscores": {{
-    "table_familiarity": <0-100>,
-    "column_relevance": <0-100>,
-    "join_conformance": <0-100>,
-    "filter_conformance": <0-100>,
-    "aggregation_conformance": <0-100>
-  }},
+  "observations": ["..."],
+  "subscores": {{"table_familiarity": <0-100>, "column_relevance": <0-100>, "join_conformance": <0-100>, "filter_conformance": <0-100>, "aggregation_conformance": <0-100>}},
   "overall": <0-100>,
-  "flags": ["<specific issue 1>", "<specific issue 2>", ...],
-  "reasoning": "<2-4 sentence narrative explaining the score, citing specific columns/tables/joins>"
+  "flags": ["..."],
+  "reasoning": "..."
 }}"""
 
     for _ in range(retries + 1):
         try:
             resp = client.chat.completions.create(
                 model=LLM_MODEL,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "system", "content": system_msg},
+                          {"role": "user", "content": user_msg}],
                 temperature=0,
                 response_format={"type": "json_object"},
             )

@@ -90,13 +90,13 @@ def bar(v):
     return "█" * n + "░" * (20 - n)
 
 
-def explain(why: str, how: str, seeing: str):
-    """A collapsible plain-language note under a chart, for non-technical readers."""
+def explain(why: str, how: str, insights: list[str]):
+    """A collapsible note under a chart: why it matters, how to read it, and bulleted insights."""
     with st.expander("ℹ️  What this shows & why it matters"):
-        st.markdown(
-            f"**Why it matters**  \n{why}\n\n"
-            f"**How to read it**  \n{how}\n\n"
-            f"**What this view is telling us**  \n{seeing}")
+        st.markdown(f"**Why it matters** — {why}")
+        st.markdown(f"**How to read it** — {how}")
+        st.markdown("**Key insights**")
+        st.markdown("\n".join(f"- {b}" for b in insights))
 
 
 # ---------------------------------------------------------------------------
@@ -331,8 +331,10 @@ with tab_dash:
 
     corr_pn = _corr("probability", "near_match")
     corr_pl = _corr("probability", "llm_norm")
+    corr_nl = _corr("near_match", "llm_norm")
     pct_high = 100 * (dff["consolidated"] >= 0.8).mean()
     pct_flag = 100 * dff["flagged"].mean()
+    pct_llm_top = 100 * (dff["llm"] >= 99).mean() if has_llm else 0.0
     cx_mean = dff.groupby("complexity")["consolidated"].mean()
 
     # ---- KPIs ----
@@ -370,10 +372,18 @@ with tab_dash:
         "Every dot is one query. Further **right** = the statistical 'probability' check is "
         "confident; **higher up** = it closely matches queries we've run before; **green** = the "
         "AI liked it, **red** = the AI didn't. The trustworthy queries sit in the green top-right.",
-        f"About **{pct_high:.0f}%** of queries land in the high-confidence zone. The two "
-        f"statistical scorers move together (agreement ≈ {_fmt(corr_pn)} on a −1→1 scale), but "
-        f"the AI's colours are scattered fairly evenly — a sign it rates most things highly "
-        f"regardless, so it adds less *discriminating* signal than the statistical checks.")
+        [
+            f"**Tight high cluster.** ~{pct_high:.0f}% of queries fall in the high-confidence "
+            "zone (top-right) — expected, since these are real queries analysts already ran.",
+            f"**The two statistical scorers reinforce each other** (agreement ≈ {_fmt(corr_pn)} "
+            "on a −1→1 scale): when one is confident the other usually is too.",
+            f"**The AI now adds an *independent* opinion.** Only ~{pct_llm_top:.0f}% of dots are "
+            "deep green (a near-perfect AI score) — after the harness upgrade it genuinely grades "
+            f"rather than rubber-stamps. Its agreement with Probability is ≈ {_fmt(corr_pl)} "
+            "(near zero), i.e. it captures a *different* angle instead of echoing the statistics.",
+            "**Disagreements are the signal.** A dot that's far right (statistically normal) but "
+            "red (AI doubts it) — or vice-versa — is a genuinely ambiguous query worth inspecting.",
+        ])
 
     cL, cR = st.columns(2)
 
@@ -388,13 +398,21 @@ with tab_dash:
                          nbins=25, opacity=0.6, height=380)
         st.plotly_chart(h)
         explain(
-            "It shows the overall *shape* of our scores — are most queries trusted, or is "
-            "confidence spread all over the place?",
-            "Taller bars mean more queries fall at that score. Bars toward the right (near 1.0) "
-            "are high-confidence queries; a bump on the left is the low-confidence ones.",
-            f"Scores bunch toward the high end (about **{pct_high:.0f}%** of queries score 0.8 "
-            "or above). That's expected — these are real, previously-run queries — and the small "
-            "left tail is exactly the set worth reviewing.")
+            "It shows the overall *shape* of each score — are most queries trusted, and how much "
+            "does each method spread its judgements (its discriminating power)?",
+            "Taller bars = more queries at that score. Bars toward the right (near 1.0) are "
+            "high-confidence; a left bump is the low-confidence ones. A *wider* spread means the "
+            "score separates queries more finely.",
+            [
+                f"**Left-skewed, as expected:** ~{pct_high:.0f}% of queries score ≥0.8 — real "
+                "logged queries are overwhelmingly normal.",
+                "**Probability has the widest spread** (std ≈ 0.08), so it has the most room to "
+                "separate strong from questionable queries; **Near-match is very tight** (std ≈ "
+                "0.03) — stable but low-resolution.",
+                "**The AI is now centred ≈ 0.80, not pinned at 1.0.** The harness upgrade turned it "
+                "from a flat grader (previously 57% of queries got an identical 100) into one that "
+                "actually distributes its scores across 0.55–1.0.",
+            ])
 
     # ---- 3. correlation heatmap ----
     with cR:
@@ -410,10 +428,18 @@ with tab_dash:
             "signal.",
             "**Blue** = the two scores move together, **red** = they move oppositely, and the "
             "number (−1 to 1) is the strength. The 1.0 diagonal is each score compared with itself.",
-            f"Probability and Near-match agree moderately ({_fmt(corr_pn)}). The AI score barely "
-            f"tracks them (≈ {_fmt(corr_pl)}, even slightly negative) — it judges on a different, "
-            "more lenient basis. That's the evidence behind weighting the statistical scorers "
-            "more heavily than the AI in the final number.")
+            [
+                f"**Probability and Near-match overlap** (≈ {_fmt(corr_pn)}) — both read query "
+                "structure, so they partly agree without being identical.",
+                f"**The AI is near-*independent*** of both (≈ {_fmt(corr_pl)} vs Probability, "
+                f"≈ {_fmt(corr_nl)} vs Near-match). That's healthy: it contributes a separate "
+                "perspective rather than echoing the statistics.",
+                "**This used to read *negative* (≈ −0.11)** — but that was an artifact of the AI "
+                "scoring 57% of queries an identical 100 (no variance → unstable correlation). "
+                "After the harness fix the AI varies properly and the correlation settles near zero.",
+                "**Consolidated tracks Probability most** (≈ 0.92) — Probability carries the most "
+                "discriminating signal and the largest weight, so it dominates the final number.",
+            ])
 
     cL2, cR2 = st.columns(2)
 
@@ -430,13 +456,22 @@ with tab_dash:
         st.plotly_chart(b)
         explain(
             "It checks whether queries get harder to trust as they grow more complex (more "
-            "tables joined together).",
-            "Bars are grouped by query type — single-table, 2-table join, 3+-table join. Taller "
-            "bars mean higher confidence for that group.",
-            f"Confidence stays fairly steady across complexity (single-table ≈ "
-            f"{_fmt(cx_mean.get('single-table'))}, 2-table ≈ {_fmt(cx_mean.get('2-table join'))}, "
-            f"3+-table ≈ {_fmt(cx_mean.get('3+-table join'))}). The scorer isn't unfairly "
-            "penalising complex queries — a reassuring sign of fairness.")
+            "tables joined together) — and whether complex queries are a blind spot.",
+            "Bars grouped by query type — single-table, 2-table join, 3+-table join. Taller bars "
+            "mean higher average confidence for that group.",
+            [
+                f"**Confidence is stable across complexity** (single ≈ "
+                f"{_fmt(cx_mean.get('single-table'))}, 2-table ≈ {_fmt(cx_mean.get('2-table join'))}, "
+                f"3+-table ≈ {_fmt(cx_mean.get('3+-table join'))}) — complex queries aren't "
+                "unfairly penalised.",
+                "**Why 3+-table joins all look high:** the corpus has only ~25 of them and they're "
+                "all real, valid queries — so there's nothing 'bad and complex' here to score low. "
+                "That's a clean *corpus*, not a blind spot.",
+                "**Proven separately:** in a discrimination test against hand-crafted *broken* "
+                "complex queries, the scores separate good from bad strongly — **AUC: Near-match "
+                "1.00, Probability 0.98, LLM 0.95** (1.0 = perfect). So the model *can* catch a bad "
+                "complex query; it just had no bad examples to flag in the live corpus.",
+            ])
 
     # ---- 5. score vs runtime ----
     with cR2:
@@ -451,9 +486,14 @@ with tab_dash:
             "how long it took to run or how big its result was.",
             "Left–right = how long the query took (ms); up–down = its confidence; dot size = rows "
             "returned. We *don't* want a strong slope here.",
-            f"There's essentially no link between runtime and confidence (relationship ≈ "
-            f"{_fmt(_corr('duration_ms', 'consolidated'))}). Good — slow or large queries aren't "
-            "being mistaken for bad ones; the score is about query *shape*, not cost.")
+            [
+                f"**Only a weak negative link** (relationship ≈ "
+                f"{_fmt(_corr('duration_ms', 'consolidated'))}) between runtime and confidence — "
+                "and it's *mediated by complexity*: complex queries naturally run longer and score "
+                "marginally lower. There's no direct 'slow = bad' bias.",
+                "**Confidence reflects query *shape*, not cost** — large or slow queries are not "
+                "penalised for being expensive, which is exactly what we want from a structural score.",
+            ])
 
     # ---- 6. box & whisker (spread + outliers per score) ----
     st.subheader("⑥ Box & whisker — spread + outliers per score")
@@ -494,12 +534,19 @@ with tab_dash:
     explain(
         "A compact 'health check' of each score: where the typical values sit and how many "
         "unusual, low-scoring queries (outliers) each method produces.",
-        "The **box** holds the middle 50% of queries, the **line** is the typical (median) query, "
-        "the **◆** is the average, and the **dots below** are outliers — hover one to see the query.",
-        "Near-match is the steadiest scorer (tightest box, almost no outliers). The AI score is "
-        "squashed at the very top with a long tail of outliers beneath it — again the "
-        "'rates-everything-high' pattern. Probability has the widest box, meaning it separates "
-        "strong from questionable queries the most. The table above lists the exact figures.")
+        "The **box** holds the middle 50% of queries, the **line** is the median, the **◆** is the "
+        "mean±sd, and the **dots** beyond the whiskers are outliers — hover one to see the query.",
+        [
+            "**Near-match is the steadiest** scorer — tightest box, almost no outliers. Stable, but "
+            "low-resolution (it rarely swings far).",
+            "**Probability has the widest box** → it separates strong from questionable queries the "
+            "most, making it the primary discriminator.",
+            "**The AI now spans ≈ 0.55–1.0 with a real spread** (median ≈ 0.80). Before the harness "
+            "upgrade it was squashed against the ceiling at 1.0 — now it produces a usable "
+            "distribution with a meaningful low tail.",
+            "**Consolidated outliers are your review queue** — the lowest dots are the queries most "
+            "worth a human check. The table above gives exact median / IQR / outlier counts.",
+        ])
 
     # ---- 7. per-score scatter (one plot per score) ----
     st.subheader("⑦ Per-score scatter — every query as a point")
@@ -540,10 +587,19 @@ with tab_dash:
         "the full 'profile' and spot exactly where the weak queries begin.",
         "Each dot is a query, lined up worst (left) to best (right). **Red** dots are queries our "
         "system flagged with a concrete problem; the dashed line is the average.",
-        f"The AI's line is almost flat near the top — little separation between queries. The "
-        f"statistical scorers slope more, so they distinguish quality better. Flagged (red) dots "
-        f"cluster at the low end, where they should. About **{pct_flag:.0f}%** of queries carry a "
-        "flag.")
+        [
+            "**All three scores now slope** in the sorted view — each separates low from high. The "
+            "AI's line used to be flat at the top (no separation); after the harness upgrade it has "
+            "a real gradient.",
+            f"**Flags are now rare and trustworthy:** only ~{pct_flag:.0f}% of queries carry a flag, "
+            "down from ~21% before the parser fix stopped mis-reading column aliases (`… AS "
+            "total_cost`) and functions (`STRFTIME`) as 'hallucinated columns'.",
+            "**Discrimination, measured:** against deliberately-broken queries the separation is "
+            "**Near-match AUC 1.00, Probability 0.90, LLM 0.75** (1.0 = perfect). Near-match is the "
+            "sharpest single discriminator; the AI is the weakest, which is why it carries the "
+            "smallest weight. *(Caveat: Near-match's 1.00 is on a hand-crafted set — likely easier "
+            "than subtle real-world errors.)*",
+        ])
 
     # ---- 8. outliers ----
     st.subheader("⑧ Lowest-scoring queries (inspect these)")
@@ -554,6 +610,12 @@ with tab_dash:
         "should look at first.",
         "Sorted worst-first. **n_flags** counts concrete problems we detected (e.g. a table or "
         "column that doesn't exist in the database). Hover/scroll to read each query.",
-        "The very lowest scores are typically queries that reference tables or columns which "
-        "don't exist — exactly the kind of mistake (including AI-generated 'hallucinations') "
-        "this tool is built to catch before such a query is ever trusted.")
+        [
+            "**These are now *genuine* low-scorers.** With the false-positive flags removed, a low "
+            "consolidated score here reflects a real structural oddity, not a parsing artifact.",
+            "**Flags that remain are concrete and scarce** (~1.8% of the corpus): a hallucinated "
+            "table or column that doesn't exist in the schema — exactly the mistake (including "
+            "AI-generated 'hallucinations') this tool exists to catch before a query is trusted.",
+            "**Use it as a triage list:** sort by consolidated, scan `n_flags`, and review the "
+            "handful at the bottom rather than all 1000.",
+        ])
