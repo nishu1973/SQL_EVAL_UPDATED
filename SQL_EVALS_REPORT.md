@@ -163,19 +163,29 @@ Returns **top-N closest** historical queries (default `top_n=3` in tests, `5` in
 
 ### 3d. Consolidated Final Score
 
-**Input:** probability overall (3a) + near-match best score (3c)  
+> **Updated.** The scorer was refined in a multi-phase pass — see
+> [scoring_improvement_plan.md](scoring_improvement_plan.md) and
+> [scoring_refinement_results.md](scoring_refinement_results.md). The consolidated formula
+> below now incorporates the LLM score when available, with a deterministic fallback.
+
+**Input:** probability overall (3a) + robust near-match score (3c) + LLM overall (3b, optional)
 **Output:** single consolidated score (0.0–1.0) printed at bottom of report
 
 ```
-consolidated = 0.60 * probability_overall + 0.40 * near_match_best
+LLM available:  consolidated = 0.45*probability + 0.30*near_score + 0.25*(llm/100)
+LLM absent:     consolidated = re-normalize(0.45*prob + 0.30*near)  ==  0.60*prob + 0.40*near
 ```
 
-| Component | Weight |
-|---|---|
-| Probability (statistical) | 60% |
-| Near-match (best corpus hit) | 40% |
+| Component | Weight (LLM present) | Weight (LLM absent) |
+|---|---|---|
+| Probability (statistical) | 45% | 60% |
+| Near-match (robust best/top-k) | 30% | 40% |
+| LLM | 25% | — |
 
-LLM score is reported separately and does not feed into the consolidated score.
+The fallback re-normalizes the prob/near weights so the no-LLM path reproduces the original
+60/40 blend exactly. The probability scorer is also schema-grounded (validity vs. popularity)
+and uses worst-offender aggregation; near-match runs on a deduplicated corpus. Detected
+anomalies (hallucinated tables/columns, unseen joins) are surfaced as explicit flags.
 
 ---
 

@@ -18,11 +18,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from score_query import (
-    CONSOLIDATED_W_NEAR,
-    CONSOLIDATED_W_PROB,
     _structural_features,
     _sql_token_set,
+    consolidate,
     load_corpus,
+    load_schema,
     load_stats,
     parse_query,
     score_near_match,
@@ -225,7 +225,9 @@ TEST_QUERIES: list[dict] = [
 # Run scoring
 # ---------------------------------------------------------------------------
 
-def bar(score: float, width: int = 12) -> str:
+def bar(score, width: int = 12) -> str:
+    if score is None:
+        return "─" * width
     filled = round(score * width)
     return "█" * filled + "░" * (width - filled)
 
@@ -234,32 +236,36 @@ def run_all() -> list[dict]:
     print("Loading stats and corpus…", flush=True)
     stats  = load_stats(DB_PATH)
     corpus = load_corpus(DB_PATH)
+    schema = load_schema()
 
     results: list[dict] = []
     for entry in TEST_QUERIES:
         sql  = entry["sql"]
         info = parse_query(sql)
-        prob = score_probability(info, stats)
+        prob = score_probability(info, stats, schema)
         nm   = score_near_match(sql, info, corpus, top_n=3)
 
-        consolidated = round(
-            CONSOLIDATED_W_PROB * prob.overall + CONSOLIDATED_W_NEAR * nm.best_score, 3
-        )
+        def r3(x):  # None-safe rounding (a dimension is None when not applicable)
+            return round(x, 3) if x is not None else None
+
+        # No LLM in the batch report -> deterministic re-normalized blend over robust near.
+        consolidated = round(consolidate(prob.overall, nm.score, llm_norm=None), 3)
         results.append({
             "group":   entry["group"],
             "label":   entry["label"],
             "sql":     sql,
             "probability": {
-                "table_familiarity":   round(prob.table_familiarity.score, 3),
-                "column_coverage":     round(prob.column_coverage.score, 3),
-                "join_pattern":        round(prob.join_pattern.score, 3),
-                "join_key_validity":   round(prob.join_key_validity.score, 3),
-                "filter_familiarity":  round(prob.filter_familiarity.score, 3),
-                "filter_operator":     round(prob.filter_operator.score, 3),
-                "aggregation_pattern": round(prob.aggregation_pattern.score, 3),
-                "overall":             round(prob.overall, 3),
+                "table_familiarity":   r3(prob.table_familiarity.score),
+                "column_coverage":     r3(prob.column_coverage.score),
+                "join_pattern":        r3(prob.join_pattern.score),
+                "join_key_validity":   r3(prob.join_key_validity.score),
+                "filter_familiarity":  r3(prob.filter_familiarity.score),
+                "filter_operator":     r3(prob.filter_operator.score),
+                "aggregation_pattern": r3(prob.aggregation_pattern.score),
+                "overall":             r3(prob.overall),
             },
             "near_match": {
+                "score":      round(nm.score, 3),
                 "best_score": round(nm.best_score, 3),
                 "mean_top3":  round(nm.mean_top5, 3),
                 "top_hits": [
@@ -325,7 +331,8 @@ def format_report(results: list[dict]) -> str:
         }
         for key, label in dim_labels.items():
             sc = p[key]
-            lines.append(f"  {label:<35}  {sc:>6.3f}  {bar(sc)}")
+            sc_str = f"{sc:>6.3f}" if sc is not None else f"{'N/A':>6}"
+            lines.append(f"  {label:<35}  {sc_str}  {bar(sc)}")
 
         lines.append(f"  {'─'*68}")
         lines.append(f"  {'OVERALL':35}  {p['overall']:>6.3f}  {bar(p['overall'])}")
@@ -333,7 +340,7 @@ def format_report(results: list[dict]) -> str:
         # Detail lines: always show for dims below 0.5, otherwise only flagged entries
         for dim_name, details in r["detail"].items():
             dim_score = p[dim_name]
-            if dim_score < 0.5:
+            if dim_score is not None and dim_score < 0.5:
                 for d in details:
                     lines.append(f"    ⚑  [{dim_name}] {d}")
             else:
@@ -343,7 +350,8 @@ def format_report(results: list[dict]) -> str:
 
         nm = r["near_match"]
         lines.append(f"\n  {'─'*68}")
-        lines.append(f"  NEAR-MATCH   best={nm['best_score']:.3f}  {bar(nm['best_score'])}  mean-top3={nm['mean_top3']:.3f}")
+        lines.append(f"  NEAR-MATCH   robust={nm['score']:.3f}  {bar(nm['score'])}"
+                     f"  best={nm['best_score']:.3f}  mean-top3={nm['mean_top3']:.3f}")
         for h in nm["top_hits"]:
             lines.append(
                 f"    #{h['rank']}  combined={h['combined']:.3f}"
@@ -353,7 +361,7 @@ def format_report(results: list[dict]) -> str:
 
         cs = r["consolidated_overall"]
         lines.append(f"\n  {'═'*68}")
-        lines.append(f"  CONSOLIDATED SCORE  (60% prob + 40% near-match)   {cs:.3f}  {bar(cs)}")
+        lines.append(f"  CONSOLIDATED SCORE  (deterministic: 60% prob + 40% near, no LLM)   {cs:.3f}  {bar(cs)}")
         lines.append(f"  {'═'*68}")
 
     lines.append(f"\n{SEP}\n")

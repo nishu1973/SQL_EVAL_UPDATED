@@ -42,10 +42,32 @@ load_dotenv()
 
 DB_PATH = Path("raw_data/parsed_query_logs.db")
 ANALYSIS_MD = Path("reports/query_analysis.md")
+SCHEMA_DB_PATH = Path("raw_data/wealth_management_diverse.db")
 
-# Consolidated score weights
+# OpenAI model used by the LLM scorer. gpt-4o-mini is the cheaper/faster option.
+LLM_MODEL = "gpt-4o-mini"
+
+# Consolidated score weights (legacy two-scorer blend; kept for the --no-llm fallback
+# path and for backward-compatible imports). The LLM-aware blend lives in SCORING_CONFIG.
 CONSOLIDATED_W_PROB = 0.60
 CONSOLIDATED_W_NEAR = 0.40
+
+# ---------------------------------------------------------------------------
+# Tunable scoring parameters — centralized (see scoring_improvement_plan.md §5).
+# All values here are knobs; behavior is wired up across Phases 2–4.
+# ---------------------------------------------------------------------------
+SCORING_CONFIG = {
+    "S_VALID":    0.5,   # credit for a table/column that EXISTS in schema but was never logged
+    "T_SAT":      None,  # fixed saturation count; None => per-counter adaptive (T_SAT_FRAC * max)
+    "T_SAT_FRAC": 0.25,  # adaptive saturation = this fraction of the most-popular feature's count
+    "MIN_SAT":    3,     # floor for the adaptive saturation threshold
+    "ALPHA":      0.6,   # worst-offender blend:  alpha*mean + (1-alpha)*min
+    "W_PROB":  0.45,   # consolidated weight: probability
+    "W_NEAR":  0.30,   # consolidated weight: near-match
+    "W_LLM":   0.25,   # consolidated weight: LLM (only when available; else re-normalized)
+    "BETA":    0.7,    # near-match:  beta*best + (1-beta)*mean(top_k_distinct)
+    "TOP_K":   5,      # near-match: number of distinct patterns to average
+}
 
 # ---------------------------------------------------------------------------
 # Regex (mirrors analyze_query_logs_llm.py)
@@ -70,9 +92,14 @@ FILTER_RE = re.compile(
 )
 
 SKIP = {"AND","OR","NOT","ON","AS","NULL","TRUE","FALSE","SUBQ","SELECT",
-        "FROM","WHERE","JOIN","BY","THEN","ELSE","WHEN","CASE","END"}
-AGG_NAMES = {"SUM","COUNT","AVG","MIN","MAX","STDDEV","COALESCE","NULLIF",
-             "ROUND","ABS","JULIANDAY","NOW","DATE","LOWER","UPPER","CAST"}
+        "FROM","WHERE","JOIN","BY","THEN","ELSE","WHEN","CASE","END",
+        # SQL keywords/operators that otherwise leak in as phantom "columns"
+        "DISTINCT","LIKE","IN","IS","BETWEEN","EXISTS","ALL","ANY","UNION",
+        "ASC","DESC","GROUP","ORDER","HAVING","LIMIT","OFFSET","USING","INTO",
+        "LEFT","RIGHT","INNER","OUTER","FULL","CROSS"}
+AGG_NAMES = {"SUM","COUNT","AVG","MIN","MAX","STDDEV","VARIANCE","COALESCE","NULLIF",
+             "ROUND","ABS","JULIANDAY","NOW","DATE","DATEADD","DATEDIFF","LOWER","UPPER",
+             "TRIM","LENGTH","SUBSTR","CAST","CONVERT","IIF","ISNULL"}
 
 # ---------------------------------------------------------------------------
 # SQL parsing helpers
@@ -83,7 +110,22 @@ def _clause(sql: str, key: str) -> str:
     m = CLAUSE_RE[key].search(cleaned)
     return m.group(1).strip() if m else ""
 
+def _clean_clause_text(text: str) -> str:
+    """Remove things that are NOT base columns before column tokenization:
+      - string literals            'INV-001'        -> (gone)
+      - output aliases / cast types `… AS total_cost`, `CAST(x AS INTEGER)` -> drop the alias/type
+      - function-call NAMES         `STRFTIME(`, `COUNT(` -> drop the name, keep the args
+    Without this, alias names (`total_cost`, `holding_count`) and functions (`STRFTIME`) get
+    mistaken for real columns — and schema-grounding then false-flags them as hallucinations.
+    """
+    text = re.sub(r"'[^']*'", " ", text)                       # string literals
+    text = re.sub(r"\bAS\s+[A-Za-z_]\w*", " ", text, flags=re.I)  # AS <alias> / AS <type>
+    text = re.sub(r"\b[A-Za-z_]\w*\s*\(", " (", text)          # function name before "("
+    return text
+
+
 def _tokens(text: str, exclude_agg: bool = False) -> list[str]:
+    text = _clean_clause_text(text)
     toks = re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b", text)
     result = [t.upper() for t in toks if t.upper() not in SKIP]
     if exclude_agg:
@@ -127,7 +169,11 @@ def parse_query(sql: str) -> QueryInfo:
     al_cols    = _aliased_cols(sql, aliases)
     is_multi   = len(tables_raw) > 1
 
+    table_set = set(tables_raw)
+
     def owns(col: str, table: str) -> bool:
+        if col in table_set:                       # a table name is never a column (subquery leak)
+            return False
         if col in al_cols.get(table, []):
             return True
         if not is_multi and col not in SKIP and col not in AGG_NAMES:
@@ -156,7 +202,24 @@ def parse_query(sql: str) -> QueryInfo:
         if col.upper() not in SKIP
     ]
 
-    agg_pairs = [(fn.upper(), col.strip().upper()) for fn, col in AGG_COL_RE.findall(sql)]
+    def _clean_agg_col(raw: str) -> str:
+        """Resolve an aggregation target to its bare column.
+
+        Drops table-alias prefixes (so SUM(h.current_value) -> CURRENT_VALUE, not the
+        spurious token 'H') and wrapping function names (so AVG(ABS(c.amount)) -> AMOUNT).
+        """
+        toks = [
+            t.upper()
+            for t in re.findall(r"\b([A-Za-z_]\w*)\b", raw)
+            if t.upper() not in SKIP
+            and t.upper() not in AGG_NAMES
+            and t.upper() not in aliases          # alias names are not columns
+        ]
+        if toks:
+            return toks[-1]                       # the real column after funcs/aliases
+        return "(*)" if "*" in raw else ""
+
+    agg_pairs = [(fn.upper(), _clean_agg_col(col)) for fn, col in AGG_COL_RE.findall(sql)]
 
     join_keys: dict[str, list[str]] = defaultdict(list)
     for tbl in tables_raw:
@@ -229,6 +292,7 @@ def load_stats(db_path: Path) -> dict:
         return m.group(1).strip() if m else ""
 
     def toks(text, no_agg=False):
+        text = _clean_clause_text(text)  # strip literals, AS-aliases, function-call names
         ts = [t.upper() for t in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b", text) if t.upper() not in SKIP]
         return [t for t in ts if not (no_agg and t in AGG_NAMES)]
 
@@ -258,7 +322,11 @@ def load_stats(db_path: Path) -> dict:
                     if other != tbl:
                         s["join_partners"][other] += 1
 
-            def owns_h(col):
+            tbl_set = set(tbls)
+
+            def owns_h(col, _tbl_set=tbl_set):
+                if col in _tbl_set:                # a table name is never a column
+                    return False
                 if col in alcols.get(tbl, []):
                     return True
                 return not multi and col not in SKIP and col not in AGG_NAMES
@@ -292,6 +360,32 @@ def load_stats(db_path: Path) -> dict:
     return dict(stats)
 
 
+def load_schema(db_path: Path = SCHEMA_DB_PATH) -> dict[str, set[str]]:
+    """Return {TABLE_NAME: {COLUMN, ...}} from the real wealth-management database.
+
+    This is the *ground-truth* schema, used to separate VALIDITY (does this
+    table/column actually exist?) from POPULARITY (how often was it logged?).
+    Returns {} when the DB is absent so callers degrade gracefully to
+    popularity-only scoring (Phases 2+ consume this).
+    """
+    if not db_path.exists():
+        return {}
+    con = sqlite3.connect(str(db_path))
+    try:
+        tables = [
+            r[0] for r in con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        ]
+        schema: dict[str, set[str]] = {}
+        for tbl in tables:
+            cols = {row[1].upper() for row in con.execute(f'PRAGMA table_info("{tbl}")')}
+            schema[tbl.upper()] = cols
+    finally:
+        con.close()
+    return schema
+
+
 def load_table_sections(md_path: Path) -> dict[str, str]:
     """Return {TABLE_NAME: markdown_section_text} from query_analysis.md."""
     if not md_path.exists():
@@ -316,6 +410,10 @@ class DimScore:
     score: float | None
     label: str
     detail: list[str] = field(default_factory=list)
+    # Structured calculation trace for the UI (Change: explain layer). Each instance is a
+    # dict {label, count, valid, t_sat, formula, score}; `agg` records the worst-offender step.
+    instances: list[dict] = field(default_factory=list)
+    agg: dict | None = None
 
     def bar(self) -> str:
         if self.score is None:
@@ -357,52 +455,207 @@ class ProbabilityReport:
         ]
 
 
-def _rel_score(count: int, counter: Counter) -> float:
-    """Score relative to the max observed frequency (0.0 if unseen)."""
-    if not counter:
+def _t_sat(counter: Counter, cfg: dict) -> float:
+    """Saturation threshold: occurrences at which a feature earns full frequency credit.
+
+    Adaptive default = a fraction of the most-popular feature's count (floored at MIN_SAT),
+    so a feature need only be *reasonably common* — not THE most common — to saturate. This
+    deliberately replaces the old max-normalization that punished legitimate-but-rare
+    features (the §1.1 flaw).
+    """
+    if cfg.get("T_SAT") is not None:
+        return cfg["T_SAT"]
+    m = max(counter.values()) if counter else 1
+    return max(cfg.get("MIN_SAT", 3), cfg.get("T_SAT_FRAC", 0.25) * m)
+
+
+def feature_score(count: int, valid: bool | None, cfg: dict, t_sat: float) -> float:
+    """Validity-aware familiarity score in [0, 1].
+
+      valid is True  -> confirmed in the real schema: S_VALID baseline + saturating freq bonus
+      valid is False -> NOT in the real schema (hallucinated): 0.0
+      valid is None  -> no schema available (degrade): popularity-only saturating curve
+    """
+    if valid is False:
         return 0.0
-    return min(count / max(counter.values()), 1.0) if count > 0 else 0.0
+    sat = min(count / t_sat, 1.0) if (count > 0 and t_sat > 0) else 0.0
+    if valid is True:
+        s_valid = cfg["S_VALID"]
+        return s_valid + (1.0 - s_valid) * sat        # in [S_VALID, 1]
+    return sat                                         # valid is None: frequency only
 
 
-def score_probability(info: QueryInfo, stats: dict) -> ProbabilityReport:
+def _aggregate(scores: list[float], cfg: dict) -> float | None:
+    """Worst-offender weighted aggregation: alpha*mean + (1-alpha)*min.
 
-    # 1. Table familiarity
-    known = [t for t in info.tables if t in stats]
-    unknown = [t for t in info.tables if t not in stats]
-    tf_score = len(known) / len(info.tables) if info.tables else 1.0
-    tf = DimScore(tf_score, "Table Familiarity",
-                  [f"✓ {t}" for t in known] + [f"✗ UNKNOWN: {t}" for t in unknown])
+    A single anomalous instance (e.g. a hallucinated column scoring 0) visibly drags the
+    dimension down instead of being averaged away — without a hard cap (§1.2).
+    """
+    if not scores:
+        return None
+    a = cfg["ALPHA"]
+    return a * (sum(scores) / len(scores)) + (1.0 - a) * min(scores)
 
-    # 2. Column coverage — across select + where columns
-    col_scores: list[float] = []
-    col_details: list[str] = []
+
+def _col_valid(col: str, table: str, schema: dict) -> bool | None:
+    """True if `col` is a real column of `table`; False if not; None if schema unavailable."""
+    if not schema:
+        return None
+    return col in schema.get(table, set())
+
+
+def _feature_explain(label: str, count: int, valid: bool | None,
+                     cfg: dict, t_sat: float) -> tuple[float, dict]:
+    """Score one feature AND return a human-readable record of the calculation."""
+    sc = feature_score(count, valid, cfg, t_sat)
+    sv = cfg["S_VALID"]
+    if valid is False:
+        formula = "not in schema → 0.0"
+    elif valid is True:
+        if count == 0:
+            formula = f"valid but never logged → S_VALID = {sv}"
+        else:
+            ratio = min(count / t_sat, 1.0)
+            formula = (f"{sv} + {round(1 - sv, 3)}·min({count}/{round(t_sat, 1)}, 1) "
+                       f"= {sv} + {round(1 - sv, 3)}·{round(ratio, 3)} = {round(sc, 3)}")
+    else:  # valid is None (no schema → popularity only)
+        if count == 0:
+            formula = "no schema info, never seen → 0.0"
+        else:
+            ratio = min(count / t_sat, 1.0)
+            formula = f"min({count}/{round(t_sat, 1)}, 1) = {round(sc, 3)}"
+    rec = {"label": label, "count": count, "valid": valid,
+           "t_sat": round(t_sat, 2), "formula": formula, "score": round(sc, 3)}
+    return sc, rec
+
+
+def _agg_explain(scores: list[float], cfg: dict) -> tuple[float | None, dict | None]:
+    """Aggregate instance scores (worst-offender) AND return the calculation record."""
+    sc = _aggregate(scores, cfg)
+    if sc is None:
+        return None, None
+    a = cfg["ALPHA"]
+    mean = sum(scores) / len(scores)
+    mn = min(scores)
+    meta = {"alpha": a, "n": len(scores), "mean": round(mean, 3), "min": round(mn, 3),
+            "formula": (f"{a}·mean({round(mean, 3)}) + {round(1 - a, 3)}·min({round(mn, 3)}) "
+                        f"= {round(sc, 3)}"),
+            "score": round(sc, 3)}
+    return sc, meta
+
+
+def consolidate(prob_overall: float, near_best: float,
+                llm_norm: float | None, cfg: dict = SCORING_CONFIG) -> float:
+    """Blend the scorers into a single 0–1 confidence.
+
+    With a valid LLM score:  W_PROB*prob + W_NEAR*near + W_LLM*llm
+    Without one (--no-llm, no key, or invalid response): the probability/near weights are
+    RE-NORMALIZED over themselves, so the deterministic path is reproducible and — with the
+    default 0.45/0.30 — reduces to exactly the legacy 0.60/0.40 blend.
+    """
+    wP, wN, wL = cfg["W_PROB"], cfg["W_NEAR"], cfg["W_LLM"]
+    if llm_norm is None:
+        denom = wP + wN
+        return (wP * prob_overall + wN * near_best) / denom if denom else 0.0
+    return wP * prob_overall + wN * near_best + wL * llm_norm
+
+
+def collect_flags(info: QueryInfo, prob: "ProbabilityReport", schema: dict) -> list[str]:
+    """Deterministic anomaly flags surfaced alongside the score (Change 8).
+
+    Makes the headline scalar actionable: lists exactly *what* looked wrong (hallucinated
+    tables/columns from the real schema, never-before-seen joins) instead of hiding it.
+    """
+    flags: list[str] = []
+    refs: dict[str, list[str]] = defaultdict(list)
+    for d in (info.select_cols, info.where_cols, info.join_keys):
+        for tbl, cols in d.items():
+            refs[tbl].extend(cols)
+
+    if schema:
+        for t in info.tables:
+            if t not in schema:
+                flags.append(f"hallucinated table (not in schema): {t}")
+        for tbl, cols in refs.items():
+            if tbl in schema:
+                for c in dict.fromkeys(cols):
+                    if c not in schema[tbl]:
+                        flags.append(f"hallucinated column (not in schema): {tbl}.{c}")
+
+    for d in prob.join_pattern.detail:
+        if "NEVER SEEN" in d:
+            flags.append(f"never-seen join: {d.split(':')[0].strip()}")
+
+    return list(dict.fromkeys(flags))
+
+
+def score_probability(
+    info: QueryInfo,
+    stats: dict,
+    schema: dict | None = None,
+    cfg: dict = SCORING_CONFIG,
+) -> ProbabilityReport:
+    schema = schema or {}
+
+    # 1. Table familiarity — 3-tier: familiar / valid-but-novel / invalid
+    tf_scores: list[float] = []
+    tf_details: list[str] = []
+    tf_recs: list[dict] = []
+    for t in info.tables:
+        in_log = t in stats
+        in_schema = (t in schema) if schema else None
+        if in_log:
+            sc, tag, tier = 1.0, f"✓ familiar: {t}", "familiar (in schema + logged)"
+        elif in_schema is True:
+            sc, tag, tier = cfg["S_VALID"], f"~ valid but never logged: {t}", "valid but never logged"
+        elif in_schema is False:
+            sc, tag, tier = 0.0, f"✗ INVALID (not in schema): {t}", "INVALID — not in schema"
+        else:
+            sc, tag, tier = 0.0, f"✗ UNKNOWN: {t}", "unknown (no schema, never logged)"
+        tf_scores.append(sc)
+        tf_details.append(tag)
+        tf_recs.append({"label": t, "tier": tier, "score": round(sc, 3)})
+    tf_score, tf_agg = _agg_explain(tf_scores, cfg) if info.tables else (1.0, None)
+    tf = DimScore(tf_score, "Table Familiarity", tf_details, instances=tf_recs, agg=tf_agg)
+
+    # 2. Column coverage — validity-aware, across SELECT + WHERE columns
+    cc_scores: list[float] = []
+    cc_details: list[str] = []
+    cc_recs: list[dict] = []
     for tbl in info.tables:
-        if tbl not in stats:
-            continue
-        s = stats[tbl]
+        s = stats.get(tbl, {})
+        sel = s.get("select_cols", Counter())
+        whr = s.get("where_cols", Counter())
+        combined: Counter = Counter()
+        for src in (sel, whr):
+            for c, v in src.items():
+                if v > combined[c]:
+                    combined[c] = v
+        tsat = _t_sat(combined, cfg)
         all_ref = list(dict.fromkeys(
             info.select_cols.get(tbl, []) + info.where_cols.get(tbl, [])
         ))
         for col in all_ref:
-            cnt_sel = s["select_cols"].get(col, 0)
-            cnt_whr = s["where_cols"].get(col, 0)
-            cnt = max(cnt_sel, cnt_whr)
-            combined = Counter({**s["select_cols"], **s["where_cols"]})
-            sc = _rel_score(cnt, combined)
-            col_scores.append(sc)
-            status = "✓" if cnt > 0 else "✗ (unseen)"
-            col_details.append(f"{tbl}.{col}: {sc:.2f} {status} (seen {cnt}x)")
+            cnt = combined.get(col, 0)
+            valid = _col_valid(col, tbl, schema)
+            sc, rec = _feature_explain(f"{tbl}.{col}", cnt, valid, cfg, tsat)
+            cc_scores.append(sc)
+            cc_recs.append(rec)
+            tag = ("✓" if cnt > 0 else
+                   "~valid/novel" if valid is True else
+                   "✗ INVALID" if valid is False else "✗ unseen")
+            cc_details.append(f"{tbl}.{col}: {sc:.2f} {tag} (seen {cnt}x)")
+    cc_score, cc_agg = _agg_explain(cc_scores, cfg)
+    cc = DimScore(cc_score, "Column Coverage", cc_details[:12], instances=cc_recs, agg=cc_agg)
 
-    cc_score = sum(col_scores) / len(col_scores) if col_scores else None
-    cc = DimScore(cc_score, "Column Coverage", col_details[:12])
-
-    # 3. Join pattern
+    # 3. Join pattern — popularity of the table-pair (unusual joins are a soft flag)
     if not info.join_pairs:
         jp_score = None
         jp = DimScore(jp_score, "Join Pattern", ["No joins in query — N/A"])
     else:
         jp_scores: list[float] = []
         jp_details: list[str] = []
+        jp_recs: list[dict] = []
         for a, b in info.join_pairs:
             freq_a = stats.get(a, {}).get("join_partners", Counter()).get(b, 0)
             freq_b = stats.get(b, {}).get("join_partners", Counter()).get(a, 0)
@@ -416,102 +669,116 @@ def score_probability(info: QueryInfo, stats: dict) -> ProbabilityReport:
             jp_scores.append(sc)
             status = f"seen {freq}x" if freq > 0 else "NEVER SEEN — high risk"
             jp_details.append(f"{a} + {b}: {sc:.2f} ({status})")
-        jp_score = sum(jp_scores) / len(jp_scores)
-        jp = DimScore(jp_score, "Join Pattern", jp_details)
+            jp_recs.append({"label": f"{a} + {b}", "count": freq, "max_freq": max_freq,
+                            "formula": f"min({freq}/{max_freq}, 1) = {round(sc, 3)}",
+                            "score": round(sc, 3)})
+        jp_score, jp_agg = _agg_explain(jp_scores, cfg)
+        jp = DimScore(jp_score, "Join Pattern", jp_details, instances=jp_recs, agg=jp_agg)
 
     # 4. Join key validity
     jk_scores: list[float] = []
     jk_details: list[str] = []
+    jk_recs: list[dict] = []
     for tbl, cols in info.join_keys.items():
-        if tbl not in stats:
-            continue
-        jk_counter = stats[tbl]["join_keys"]
+        jk_counter = stats.get(tbl, {}).get("join_keys", Counter())
+        tsat = _t_sat(jk_counter, cfg)
         for col in cols:
             cnt = jk_counter.get(col, 0)
-            sc = _rel_score(cnt, jk_counter)
+            valid = _col_valid(col, tbl, schema)
+            sc, rec = _feature_explain(f"{tbl}.{col}", cnt, valid, cfg, tsat)
             jk_scores.append(sc)
-            status = f"used as join key {cnt}x" if cnt > 0 else "never used as join key"
+            jk_recs.append(rec)
+            status = (f"used as join key {cnt}x" if cnt > 0 else
+                      "valid key, never used historically" if valid is True else
+                      "✗ INVALID column" if valid is False else "never used as join key")
             jk_details.append(f"{tbl}.{col}: {sc:.2f} ({status})")
-
-    jkv_score = sum(jk_scores) / len(jk_scores) if jk_scores else None
-    jkv = DimScore(jkv_score, "Join Key Validity", jk_details)
+    jkv_score, jk_agg = _agg_explain(jk_scores, cfg)
+    jkv = DimScore(jkv_score, "Join Key Validity", jk_details, instances=jk_recs, agg=jk_agg)
 
     # 5. Filter column familiarity
     ff_scores: list[float] = []
     ff_details: list[str] = []
+    ff_recs: list[dict] = []
     for tbl in info.tables:
-        if tbl not in stats:
-            continue
-        wc = stats[tbl]["where_cols"]
+        wc = stats.get(tbl, {}).get("where_cols", Counter())
+        tsat = _t_sat(wc, cfg)
         for col in info.where_cols.get(tbl, []):
             cnt = wc.get(col, 0)
-            sc = _rel_score(cnt, wc)
+            valid = _col_valid(col, tbl, schema)
+            sc, rec = _feature_explain(f"{tbl}.{col}", cnt, valid, cfg, tsat)
             ff_scores.append(sc)
-            status = f"filtered {cnt}x historically" if cnt > 0 else "never filtered on — unusual"
+            ff_recs.append(rec)
+            status = (f"filtered {cnt}x historically" if cnt > 0 else
+                      "valid column, never filtered on" if valid is True else
+                      "✗ INVALID column" if valid is False else "never filtered on — unusual")
             ff_details.append(f"{tbl}.{col}: {sc:.2f} ({status})")
+    ff_score, ff_agg = _agg_explain(ff_scores, cfg)
+    ff = DimScore(ff_score, "Filter Familiarity", ff_details, instances=ff_recs, agg=ff_agg)
 
-    ff_score = sum(ff_scores) / len(ff_scores) if ff_scores else None
-    ff = DimScore(ff_score, "Filter Familiarity", ff_details)
-
-    # 6. Filter operator conformance
+    # 6. Filter operator conformance (operators have no schema validity -> popularity only)
     fo_scores: list[float] = []
     fo_details: list[str] = []
+    fo_recs: list[dict] = []
     for tbl in info.tables:
-        if tbl not in stats:
-            continue
-        col_ops = stats[tbl].get("where_col_ops", {})
+        col_ops = stats.get(tbl, {}).get("where_col_ops", {})
+        wc = stats.get(tbl, {}).get("where_cols", Counter())
         for col, op in info.where_ops:
-            if col not in stats[tbl]["where_cols"]:
+            if col not in wc:
                 continue  # handled by filter_familiarity
             op_counter = col_ops.get(col, Counter())
             cnt = op_counter.get(op, 0)
-            sc = _rel_score(cnt, op_counter) if op_counter else 0.5
+            if op_counter:
+                tsat = _t_sat(op_counter, cfg)
+                sc, rec = _feature_explain(f"{col} {op}", cnt, None, cfg, tsat)
+            else:
+                sc = 0.5
+                rec = {"label": f"{col} {op}", "count": 0, "valid": None, "t_sat": None,
+                       "formula": "no operator history → default 0.5", "score": 0.5}
             fo_scores.append(sc)
+            fo_recs.append(rec)
             status = f"{cnt}x for {col}" if cnt > 0 else f"op '{op}' not typical for {col}"
             fo_details.append(f"{col} {op}: {sc:.2f} ({status})")
+    fo_score, fo_agg = _agg_explain(fo_scores, cfg)
+    fo = DimScore(fo_score, "Filter Operator", fo_details, instances=fo_recs, agg=fo_agg)
 
-    fo_score = sum(fo_scores) / len(fo_scores) if fo_scores else None
-    fo = DimScore(fo_score, "Filter Operator", fo_details)
-
-    # 7. Aggregation pattern
+    # 7. Aggregation pattern — FUNC(col) combinations (col already alias-resolved in parse)
     ap_scores: list[float] = []
     ap_details: list[str] = []
-    for fn, raw_col in info.agg_pairs:
-        col_toks = [t.upper() for t in re.findall(r"\b([A-Za-z_]\w*)\b", raw_col)
-                    if t.upper() not in SKIP and t.upper() not in AGG_NAMES]
-        for col in (col_toks or ["(*)"]):
-            found = False
-            for tbl in info.tables:
-                if tbl not in stats:
-                    continue
-                cnt = stats[tbl]["agg_on_col"].get(fn, Counter()).get(col, 0)
-                if cnt > 0:
-                    max_c = max(stats[tbl]["agg_on_col"][fn].values())
-                    sc = min(cnt / max_c, 1.0)
-                    ap_scores.append(sc)
-                    ap_details.append(f"{fn}({col}): {sc:.2f} (seen {cnt}x on {tbl})")
-                    found = True
-                    break
-            if not found:
-                ap_scores.append(0.0)
-                ap_details.append(f"{fn}({col}): 0.00 — combination not seen historically")
-
-    ap_score = sum(ap_scores) / len(ap_scores) if ap_scores else None
-    ap = DimScore(ap_score, "Aggregation Pattern", ap_details)
+    ap_recs: list[dict] = []
+    for fn, col in info.agg_pairs:
+        col = col or "(*)"
+        best_cnt, best_tbl, best_counter = 0, None, Counter()
+        for tbl in info.tables:
+            counter = stats.get(tbl, {}).get("agg_on_col", {}).get(fn, Counter())
+            c = counter.get(col, 0)
+            if c > best_cnt:
+                best_cnt, best_tbl, best_counter = c, tbl, counter
+        if col == "(*)":
+            valid: bool | None = True
+        else:
+            votes = [_col_valid(col, t, schema) for t in info.tables]
+            valid = (True if any(v is True for v in votes)
+                     else False if votes and all(v is False for v in votes)
+                     else None)
+        tsat = _t_sat(best_counter, cfg) if best_counter else cfg.get("MIN_SAT", 3)
+        sc, rec = _feature_explain(f"{fn}({col})", best_cnt, valid, cfg, tsat)
+        ap_scores.append(sc)
+        ap_recs.append(rec)
+        if best_cnt > 0:
+            ap_details.append(f"{fn}({col}): {sc:.2f} (seen {best_cnt}x on {best_tbl})")
+        elif valid is True:
+            ap_details.append(f"{fn}({col}): {sc:.2f} (valid column, novel aggregation)")
+        elif valid is False:
+            ap_details.append(f"{fn}({col}): {sc:.2f} — ✗ INVALID column")
+        else:
+            ap_details.append(f"{fn}({col}): {sc:.2f} — combination not seen historically")
+    ap_score, ap_agg = _agg_explain(ap_scores, cfg)
+    ap = DimScore(ap_score, "Aggregation Pattern", ap_details, instances=ap_recs, agg=ap_agg)
 
     # Overall weighted score — only include dimensions that had data to evaluate.
     # Dimensions with nothing to check (no joins, no aggs, etc.) score as None
     # and are excluded here; weights are re-normalized over applicable dims only.
     w = ProbabilityReport.WEIGHTS
-    applicable = {
-        "table_familiarity":   True,
-        "column_coverage":     bool(col_scores),
-        "join_pattern":        bool(info.join_pairs),
-        "join_key_validity":   bool(jk_scores),
-        "filter_familiarity":  bool(ff_scores),
-        "filter_operator":     bool(fo_scores),
-        "aggregation_pattern": bool(ap_scores),
-    }
     dim_scores = {
         "table_familiarity":   tf_score,
         "column_coverage":     cc_score,
@@ -521,6 +788,8 @@ def score_probability(info: QueryInfo, stats: dict) -> ProbabilityReport:
         "filter_operator":     fo_score,
         "aggregation_pattern": ap_score,
     }
+    # A dimension is applicable when it produced a score (None == nothing to evaluate).
+    applicable = {k: v is not None for k, v in dim_scores.items()}
     total_weight = sum(w[k] for k, app in applicable.items() if app)
     overall = (
         sum(dim_scores[k] * w[k] for k, app in applicable.items() if app) / total_weight
@@ -534,6 +803,12 @@ def score_probability(info: QueryInfo, stats: dict) -> ProbabilityReport:
 # LLM scoring
 # ---------------------------------------------------------------------------
 
+LLM_SUBSCORE_KEYS = (
+    "table_familiarity", "column_relevance", "join_conformance",
+    "filter_conformance", "aggregation_conformance",
+)
+
+
 @dataclass
 class LLMReport:
     subscores: dict[str, int]
@@ -542,7 +817,42 @@ class LLMReport:
     flags:     list[str]
 
 
-def score_llm(sql: str, info: QueryInfo, table_sections: dict, stats: dict) -> LLMReport:
+def _clamp_0_100(v) -> int | None:
+    """Coerce a value to an int in [0, 100]; return None if it isn't a number."""
+    try:
+        return max(0, min(100, int(round(float(v)))))
+    except (TypeError, ValueError):
+        return None
+
+
+def validate_llm_payload(data: dict) -> LLMReport | None:
+    """Validate + clamp a parsed LLM response into an LLMReport.
+
+    Returns None if the payload is unusable (missing/garbage `overall`). This replaces
+    the old `data.get("overall", 0)` which silently defaulted a broken response to 0 and
+    would have cratered the consolidated score (§2.3).
+    """
+    if not isinstance(data, dict):
+        return None
+    overall = _clamp_0_100(data.get("overall"))
+    if overall is None:
+        return None  # no usable headline score -> treat as unavailable, do not invent 0
+    raw_sub = data.get("subscores") or {}
+    subscores = {k: c for k in LLM_SUBSCORE_KEYS
+                 if (c := _clamp_0_100(raw_sub.get(k))) is not None}
+    flags = data.get("flags") or []
+    if not isinstance(flags, list):
+        flags = [str(flags)]
+    return LLMReport(
+        subscores=subscores,
+        overall=overall,
+        reasoning=str(data.get("reasoning", "")),
+        flags=[str(f) for f in flags],
+    )
+
+
+def score_llm(sql: str, info: QueryInfo, table_sections: dict, stats: dict,
+              retries: int = 1) -> LLMReport | None:
     from openai import OpenAI
     client = OpenAI()
 
@@ -608,20 +918,21 @@ Return ONLY a JSON object in this exact format:
   "reasoning": "<2-4 sentence narrative explaining the score, citing specific columns/tables/joins>"
 }}"""
 
-    resp = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
-        response_format={"type": "json_object"},
-    )
-
-    data = json.loads(resp.choices[0].message.content)
-    return LLMReport(
-        subscores=data.get("subscores", {}),
-        overall=data.get("overall", 0),
-        reasoning=data.get("reasoning", ""),
-        flags=data.get("flags", []),
-    )
+    for _ in range(retries + 1):
+        try:
+            resp = client.chat.completions.create(
+                model=LLM_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+                response_format={"type": "json_object"},
+            )
+            data = json.loads(resp.choices[0].message.content)
+            report = validate_llm_payload(data)
+            if report is not None:
+                return report
+        except (json.JSONDecodeError, KeyError, AttributeError, ValueError):
+            pass  # fall through to retry
+    return None  # exhausted retries with no valid response -> caller treats as unavailable
 
 
 # ---------------------------------------------------------------------------
@@ -643,8 +954,9 @@ class MatchHit:
 @dataclass
 class NearMatchReport:
     top_hits:      list[MatchHit]
-    best_score:    float
-    mean_top5:     float
+    best_score:    float   # raw single closest hit (still reported for transparency)
+    mean_top5:     float   # mean over the displayed top-N hits
+    score:         float   # robust blend used downstream: BETA*best + (1-BETA)*mean(top_k)
 
 
 def _normalize_sql(sql: str) -> str:
@@ -722,8 +1034,14 @@ def _struct_similarity(fa: dict, fb: dict) -> float:
     )
 
 
-def load_corpus(db_path: Path) -> list[dict]:
-    """Load all historical queries with pre-computed features."""
+def load_corpus(db_path: Path, dedup: bool = True) -> list[dict]:
+    """Load historical queries with pre-computed features.
+
+    With dedup=True (default) queries that NORMALIZE to the same SQL collapse to a single
+    entry (carrying a `dup_count`). This stops N identical logged queries from masquerading
+    as a dense cluster in near-match scoring (§3.1) — e.g. the same template run with many
+    different literal values.
+    """
     con = sqlite3.connect(str(db_path))
     rows = con.execute(
         "SELECT query_num, query_id, title, start_time, sql_query FROM query_logs ORDER BY query_num"
@@ -731,9 +1049,15 @@ def load_corpus(db_path: Path) -> list[dict]:
     con.close()
 
     corpus: list[dict] = []
+    by_norm: dict[str, dict] = {}
     for query_num, query_id, title, start_time, sql in rows:
+        if dedup:
+            key = _normalize_sql(sql)
+            if key in by_norm:
+                by_norm[key]["dup_count"] += 1
+                continue
         info = parse_query(sql)
-        corpus.append({
+        entry = {
             "query_num":  query_num,
             "query_id":   query_id,
             "title":      title or "",
@@ -741,7 +1065,11 @@ def load_corpus(db_path: Path) -> list[dict]:
             "sql":        sql,
             "features":   _structural_features(info),
             "token_set":  _sql_token_set(sql),
-        })
+            "dup_count":  1,
+        }
+        corpus.append(entry)
+        if dedup:
+            by_norm[_normalize_sql(sql)] = entry
     return corpus
 
 
@@ -750,6 +1078,7 @@ def score_near_match(
     info: QueryInfo,
     corpus: list[dict],
     top_n: int = 5,
+    cfg: dict = SCORING_CONFIG,
 ) -> NearMatchReport:
     input_features  = _structural_features(info)
     input_token_set = _sql_token_set(sql)
@@ -771,11 +1100,20 @@ def score_near_match(
         ))
 
     hits.sort(key=lambda h: h.combined, reverse=True)
-    top = hits[:top_n]
-    best = top[0].combined if top else 0.0
-    mean5 = sum(h.combined for h in top) / len(top) if top else 0.0
 
-    return NearMatchReport(top_hits=top, best_score=best, mean_top5=mean5)
+    best = hits[0].combined if hits else 0.0
+    # Robust blend: temper the single best hit with the mean of the top-k DISTINCT matches,
+    # so being near one outlier scores lower than being near a genuine cluster (§3.2).
+    k = cfg.get("TOP_K", 5)
+    topk = hits[:k]
+    mean_topk = sum(h.combined for h in topk) / len(topk) if topk else 0.0
+    beta = cfg.get("BETA", 0.7)
+    score = beta * best + (1.0 - beta) * mean_topk
+
+    display = hits[:top_n]
+    mean_disp = sum(h.combined for h in display) / len(display) if display else 0.0
+
+    return NearMatchReport(top_hits=display, best_score=best, mean_top5=mean_disp, score=score)
 
 
 # ---------------------------------------------------------------------------
@@ -784,7 +1122,8 @@ def score_near_match(
 
 def render(sql: str, prob: ProbabilityReport, llm: LLMReport | None,
            nm: NearMatchReport | None = None,
-           consolidated: float | None = None) -> str:
+           consolidated: float | None = None,
+           flags: list[str] | None = None) -> str:
     lines: list[str] = []
     SEP = "=" * 66
 
@@ -811,7 +1150,7 @@ def render(sql: str, prob: ProbabilityReport, llm: LLMReport | None,
 
     if llm:
         lines.append(f"\n{'─'*66}")
-        lines.append("  LLM-BASED SCORE  (OpenAI gpt-4o)")
+        lines.append(f"  LLM-BASED SCORE  (OpenAI {LLM_MODEL})")
         lines.append(f"{'─'*66}")
         lines.append(f"  {'Dimension':<30} {'Score':>6}")
         lines.append(f"  {'─'*38}")
@@ -829,10 +1168,11 @@ def render(sql: str, prob: ProbabilityReport, llm: LLMReport | None,
 
     if nm:
         lines.append(f"\n{'─'*66}")
-        lines.append("  NEAR-MATCH SCORE  (structural + token Jaccard vs 1 000 historical queries)")
+        lines.append("  NEAR-MATCH SCORE  (structural + token Jaccard vs deduped corpus)")
         lines.append(f"{'─'*66}")
-        best_bar = "█" * round(nm.best_score * 10) + "░" * (10 - round(nm.best_score * 10))
-        lines.append(f"  Best match score : {nm.best_score:.3f}  {best_bar}")
+        score_bar = "█" * round(nm.score * 10) + "░" * (10 - round(nm.score * 10))
+        lines.append(f"  Robust near score: {nm.score:.3f}  {score_bar}  (feeds consolidated)")
+        lines.append(f"  Best single hit  : {nm.best_score:.3f}")
         lines.append(f"  Mean of top-5    : {nm.mean_top5:.3f}")
         lines.append(f"\n  Top {len(nm.top_hits)} closest historical queries:")
         lines.append(f"  {'#':<5} {'Combined':>8}  {'Struct':>6}  {'Token':>6}  Title / Query")
@@ -847,13 +1187,32 @@ def render(sql: str, prob: ProbabilityReport, llm: LLMReport | None,
             sql_preview = h.sql.strip().splitlines()[0][:80]
             lines.append(f"        SQL: {sql_preview}")
 
+    if flags:
+        lines.append(f"\n{'─'*66}")
+        lines.append("  ⚑ DETECTED ANOMALIES")
+        lines.append(f"{'─'*66}")
+        for f in flags:
+            lines.append(f"    ⚑  {f}")
+
     if consolidated is not None:
+        cfg = SCORING_CONFIG
         lines.append(f"\n{'═'*66}")
-        lines.append("  CONSOLIDATED SCORE  (60% probability + 40% near-match)")
+        if llm is not None:
+            wP = cfg["W_PROB"]; wN = cfg["W_NEAR"]; wL = cfg["W_LLM"]
+            header = f"  CONSOLIDATED SCORE  ({wP:.0%} prob + {wN:.0%} near + {wL:.0%} LLM)"
+        else:
+            denom = cfg["W_PROB"] + cfg["W_NEAR"]
+            header = (f"  CONSOLIDATED SCORE  ({cfg['W_PROB']/denom:.0%} prob + "
+                      f"{cfg['W_NEAR']/denom:.0%} near — deterministic, LLM absent)")
+        lines.append(header)
         lines.append(f"{'═'*66}")
         bar = "█" * round(consolidated * 12) + "░" * (12 - round(consolidated * 12))
         lines.append(f"  {'Overall':26} {consolidated:.3f}  {bar}")
-        lines.append(f"    Components:  probability={prob.overall:.3f}  near-match={nm.best_score:.3f}" if nm else "")
+        if nm:
+            comp = f"    Components:  probability={prob.overall:.3f}  near-match={nm.score:.3f}"
+            if llm is not None:
+                comp += f"  llm={llm.overall/100:.3f}"
+            lines.append(comp)
 
     lines.append(f"\n{SEP}")
     return "\n".join(lines)
@@ -869,6 +1228,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--file",     type=Path,  help="Read SQL from file instead")
     p.add_argument("--db",       type=Path,  default=DB_PATH)
     p.add_argument("--md",       type=Path,  default=ANALYSIS_MD)
+    p.add_argument("--schema-db", type=Path, default=SCHEMA_DB_PATH,
+                   help="Real schema DB for validity grounding (popularity-only if absent)")
     p.add_argument("--no-llm",   action="store_true", help="Skip LLM scoring")
     p.add_argument("--no-near",  action="store_true", help="Skip near-match scoring")
     p.add_argument("--top-n",    type=int,   default=5, help="Top-N near matches to show")
@@ -892,12 +1253,15 @@ def main() -> None:
     print("Loading reference stats...", flush=True)
     stats = load_stats(args.db)
     table_sections = load_table_sections(args.md)
+    schema = load_schema(args.schema_db)
+    if not schema:
+        print("Warning: schema DB not found — scoring on log popularity only.", flush=True)
 
     print("Parsing query...", flush=True)
     info = parse_query(sql)
 
     print("Computing probability scores...", flush=True)
-    prob = score_probability(info, stats)
+    prob = score_probability(info, stats, schema)
 
     llm_report = None
     if not args.no_llm:
@@ -914,12 +1278,12 @@ def main() -> None:
         corpus = load_corpus(args.db)
         nm_report = score_near_match(sql, info, corpus, top_n=args.top_n)
 
+    flags = collect_flags(info, prob, schema)
+
     consolidated: float | None = None
     if nm_report is not None:
-        consolidated = (
-            CONSOLIDATED_W_PROB * prob.overall +
-            CONSOLIDATED_W_NEAR * nm_report.best_score
-        )
+        llm_norm = (llm_report.overall / 100.0) if llm_report else None
+        consolidated = consolidate(prob.overall, nm_report.score, llm_norm)
 
     if args.json:
         out = {
@@ -935,6 +1299,7 @@ def main() -> None:
                 "reasoning": llm_report.reasoning,
             } if llm_report else None,
             "near_match": {
+                "score":       round(nm_report.score, 4),
                 "best_score":  round(nm_report.best_score, 4),
                 "mean_top5":   round(nm_report.mean_top5, 4),
                 "top_hits": [
@@ -952,11 +1317,12 @@ def main() -> None:
                     for i, h in enumerate(nm_report.top_hits)
                 ],
             } if nm_report else None,
+            "flags": flags,
             "consolidated_overall": round(consolidated, 4) if consolidated is not None else None,
         }
         print(json.dumps(out, indent=2))
     else:
-        print(render(sql, prob, llm_report, nm_report, consolidated))
+        print(render(sql, prob, llm_report, nm_report, consolidated, flags))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,6 @@
+# Minimal dependencies to run the interactive scorer app (app.py).
+# Install:  pip install -r requirements-app.txt
+streamlit>=1.40
+openai>=2.41
+python-dotenv>=1.2
+plotly>=6.0

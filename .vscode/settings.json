@@ -1,0 +1,33 @@
+{
+  // Hide noise from the file explorer
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    ".venv": true,
+    ".pytest_cache": true
+  },
+
+  // Stop the OS file watcher from tracking thousands of dependency files
+  "files.watcherExclude": {
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.git/**": true,
+    "**/.pytest_cache/**": true
+  },
+
+  // Keep search fast and relevant
+  "search.exclude": {
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "uv.lock": true
+  },
+
+  // Markdown extension scans the workspace to resolve links; relax it so
+  // opening a .md file doesn't block on a full-workspace crawl
+  "markdown.validate.enabled": false,
+  "markdown.suggest.paths.enabled": false
+}
