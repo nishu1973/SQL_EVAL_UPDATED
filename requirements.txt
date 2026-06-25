@@ -1,0 +1,7 @@
+# Runtime dependencies for the Streamlit app (app.py) and the scoring engine.
+# Streamlit Community Cloud installs from this file automatically on deploy.
+streamlit>=1.40
+pandas>=2.0
+plotly>=6.0
+openai>=2.41
+python-dotenv>=1.2

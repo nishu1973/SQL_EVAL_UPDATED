@@ -2,11 +2,18 @@
 .venv/
 __pycache__/
 *.pyc
+# Ignore databases by default, EXCEPT the two the app needs at runtime
+# (query logs + the schema source for grounding). The unused ground-truth /
+# empty redshift DBs stay ignored to keep the public repo lean.
 *.db
-# Ignore reports/ EXCEPT the derived score caches, so the dashboard works on a fresh clone.
+!raw_data/parsed_query_logs.db
+!raw_data/wealth_management_diverse.db
+# Ignore reports/ EXCEPT the derived score caches + the narrative the scorer reads,
+# so both the dashboard and the live scorer work on a fresh clone / Streamlit deploy.
 reports/*
 !reports/corpus_scores.json
 !reports/llm_cache.json
 !reports/discrimination_eval.json
+!reports/query_analysis.md
 .DS_Store
 .claude/settings.local.json
