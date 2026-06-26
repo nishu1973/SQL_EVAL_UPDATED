@@ -22,14 +22,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from score_query import (
     QueryInfo,
     NearMatchReport,
+    SCORING_CONFIG,
+    _aggregate,
     _jaccard,
     _normalize_sql,
     _sql_token_set,
     _struct_similarity,
     _structural_features,
+    collect_flags,
+    consolidate,
+    feature_score,
+    load_corpus,
     parse_query,
     score_near_match,
     score_probability,
+    validate_llm_payload,
 )
 
 
@@ -369,10 +376,12 @@ class TestScoreProbability:
         # INVESTMENT_GOAL_001 not in minimal_stats join_partners
         assert report.join_pattern.score < 0.5
 
-    def test_no_joins_full_join_score(self, minimal_stats):
+    def test_no_joins_na_join_score(self, minimal_stats):
+        # A query with no joins has nothing to evaluate for Join Pattern, so the
+        # dimension scores N/A (None) and is excluded from the weighted overall.
         info = parse_query(SINGLE_TABLE_SQL)
         report = score_probability(info, minimal_stats)
-        assert report.join_pattern.score == pytest.approx(1.0)
+        assert report.join_pattern.score is None
 
     def test_top_column_high_coverage(self, minimal_stats):
         # Use no alias so the alias token doesn't pollute the column list.
@@ -510,3 +519,253 @@ class TestScoreNearMatch:
         report = score_near_match(JOIN_SQL, info, corpus, top_n=5)
         expected_mean = sum(h.combined for h in report.top_hits) / 5
         assert report.mean_top5 == pytest.approx(expected_mean)
+
+
+# ===========================================================================
+# Phase 2–5 additions (reconstructed)
+# ===========================================================================
+
+@pytest.fixture
+def minimal_schema():
+    """Ground-truth schema: includes a valid column (TAXES_PAID) NOT in the logged stats,
+    so we can test the 'valid-but-novel' tier."""
+    return {
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001": {
+            "HOLDING_ID", "INVESTOR_ID", "INVESTMENT_TYPE", "INVESTMENT_NAME",
+            "CURRENT_VALUE", "COST", "DIVIDENDS", "TAXES_PAID", "PURCHASE_DATE", "CATEGORY",
+        },
+        "ATOM_ENTITY_INVESTOR_PROFILE_001": {
+            "INVESTOR_ID", "INVESTOR_NAME", "RISK_TOLERANCE", "SECTOR_FOCUS", "TIME_HORIZON",
+        },
+    }
+
+
+class TestFeatureScore:
+    cfg = SCORING_CONFIG
+
+    def test_invalid_column_scores_zero(self):
+        assert feature_score(0, False, self.cfg, 10) == 0.0
+        assert feature_score(999, False, self.cfg, 10) == 0.0
+
+    def test_valid_but_unlogged_gets_baseline(self):
+        assert feature_score(0, True, self.cfg, 10) == pytest.approx(self.cfg["S_VALID"])
+
+    def test_valid_and_frequent_saturates_to_one(self):
+        assert feature_score(50, True, self.cfg, 10) == pytest.approx(1.0)
+
+    def test_valid_partial_between_baseline_and_one(self):
+        sc = feature_score(5, True, self.cfg, 10)
+        assert self.cfg["S_VALID"] < sc < 1.0
+
+    def test_no_schema_unlogged_scores_zero(self):
+        assert feature_score(0, None, self.cfg, 10) == 0.0
+
+    def test_no_schema_frequent_saturates(self):
+        assert feature_score(50, None, self.cfg, 10) == pytest.approx(1.0)
+
+
+class TestAggregate:
+    cfg = SCORING_CONFIG
+
+    def test_empty_returns_none(self):
+        assert _aggregate([], self.cfg) is None
+
+    def test_all_equal_returns_that_value(self):
+        assert _aggregate([0.8, 0.8, 0.8], self.cfg) == pytest.approx(0.8)
+
+    def test_worst_offender_pulls_below_mean(self):
+        scores = [1.0] * 9 + [0.0]
+        agg = _aggregate(scores, self.cfg)
+        mean = sum(scores) / len(scores)
+        assert agg < mean
+        a = self.cfg["ALPHA"]
+        assert agg == pytest.approx(a * mean + (1 - a) * 0.0)
+
+
+class TestSchemaGrounding:
+    def test_valid_but_unlogged_column_not_penalized(self, minimal_stats, minimal_schema):
+        sql = "SELECT taxes_paid FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        info = parse_query(sql)
+        with_schema = score_probability(info, minimal_stats, minimal_schema)
+        no_schema = score_probability(info, minimal_stats, None)
+        assert with_schema.column_coverage.score == pytest.approx(SCORING_CONFIG["S_VALID"])
+        assert no_schema.column_coverage.score == pytest.approx(0.0)
+        assert with_schema.column_coverage.score > no_schema.column_coverage.score
+
+    def test_hallucinated_column_scores_zero(self, minimal_stats, minimal_schema):
+        sql = ("SELECT made_up_col FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 "
+               "WHERE made_up_col = 1")
+        info = parse_query(sql)
+        report = score_probability(info, minimal_stats, minimal_schema)
+        assert report.column_coverage.score == pytest.approx(0.0)
+
+    def test_invalid_table_scores_zero_familiarity(self, minimal_stats, minimal_schema):
+        info = parse_query("SELECT x FROM NOT_A_REAL_TABLE WHERE y = 1")
+        report = score_probability(info, minimal_stats, minimal_schema)
+        assert report.table_familiarity.score == pytest.approx(0.0)
+
+    def test_one_bad_column_visible_via_worst_offender(self, minimal_stats, minimal_schema):
+        sql = "SELECT investor_name, made_up_col FROM ATOM_ENTITY_INVESTOR_PROFILE_001"
+        info = parse_query(sql)
+        report = score_probability(info, minimal_stats, minimal_schema)
+        assert report.column_coverage.score < 0.5
+
+
+class TestCollectFlags:
+    def test_hallucinated_column_flagged(self, minimal_stats, minimal_schema):
+        info = parse_query("SELECT made_up_col FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001")
+        prob = score_probability(info, minimal_stats, minimal_schema)
+        flags = collect_flags(info, prob, minimal_schema)
+        assert any("MADE_UP_COL" in f for f in flags)
+
+    def test_unknown_table_flagged(self, minimal_stats, minimal_schema):
+        info = parse_query("SELECT x FROM NOPE_TABLE WHERE y = 1")
+        prob = score_probability(info, minimal_stats, minimal_schema)
+        flags = collect_flags(info, prob, minimal_schema)
+        assert any("NOPE_TABLE" in f for f in flags)
+
+    def test_clean_query_no_flags(self, minimal_stats, minimal_schema):
+        info = parse_query("SELECT investor_name FROM ATOM_ENTITY_INVESTOR_PROFILE_001")
+        prob = score_probability(info, minimal_stats, minimal_schema)
+        assert collect_flags(info, prob, minimal_schema) == []
+
+    def test_alias_and_function_not_flagged(self, minimal_stats, minimal_schema):
+        # AS-aliases and SQL functions must NOT be mistaken for hallucinated columns.
+        sql = ("SELECT investment_type, COUNT(*) AS holding_count "
+               "FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type")
+        info = parse_query(sql)
+        prob = score_probability(info, minimal_stats, minimal_schema)
+        assert collect_flags(info, prob, minimal_schema) == []
+
+    def test_no_schema_no_hallucination_flags(self, minimal_stats):
+        info = parse_query("SELECT made_up_col FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001")
+        prob = score_probability(info, minimal_stats, None)
+        flags = collect_flags(info, prob, {})
+        assert all("hallucinated" not in f for f in flags)
+
+
+class TestValidateLLMPayload:
+    def _good(self):
+        return {
+            "subscores": {
+                "table_familiarity": 90, "column_relevance": 80,
+                "join_conformance": 70, "filter_conformance": 60,
+                "aggregation_conformance": 50,
+            },
+            "overall": 75, "flags": ["unusual join"], "reasoning": "looks mostly fine",
+        }
+
+    def test_valid_payload_parses(self):
+        r = validate_llm_payload(self._good())
+        assert r is not None and r.overall == 75 and r.subscores["table_familiarity"] == 90
+
+    def test_missing_overall_returns_none(self):
+        d = self._good(); del d["overall"]
+        assert validate_llm_payload(d) is None
+
+    def test_garbage_overall_returns_none(self):
+        d = self._good(); d["overall"] = "not a number"
+        assert validate_llm_payload(d) is None
+
+    def test_out_of_range_scores_are_clamped(self):
+        d = self._good(); d["overall"] = 150; d["subscores"]["table_familiarity"] = -20
+        r = validate_llm_payload(d)
+        assert r.overall == 100 and r.subscores["table_familiarity"] == 0
+
+    def test_non_dict_returns_none(self):
+        assert validate_llm_payload(["nope"]) is None
+
+    def test_flags_coerced_to_list(self):
+        d = self._good(); d["flags"] = "single flag not in a list"
+        r = validate_llm_payload(d)
+        assert isinstance(r.flags, list) and r.flags == ["single flag not in a list"]
+
+    def test_missing_subscores_tolerated(self):
+        d = self._good(); del d["subscores"]
+        r = validate_llm_payload(d)
+        assert r is not None and r.subscores == {}
+
+
+class TestConsolidate:
+    def test_fallback_equals_legacy_60_40(self):
+        got = consolidate(0.90, 0.50, llm_norm=None)
+        assert got == pytest.approx(0.60 * 0.90 + 0.40 * 0.50)
+
+    def test_three_way_blend_uses_all_weights(self):
+        cfg = SCORING_CONFIG
+        got = consolidate(0.8, 0.6, llm_norm=0.4)
+        expected = cfg["W_PROB"] * 0.8 + cfg["W_NEAR"] * 0.6 + cfg["W_LLM"] * 0.4
+        assert got == pytest.approx(expected)
+
+    def test_llm_moves_the_score(self):
+        without = consolidate(0.9, 0.9, llm_norm=None)
+        with_low_llm = consolidate(0.9, 0.9, llm_norm=0.1)
+        assert with_low_llm < without
+
+    def test_all_ones_is_one(self):
+        assert consolidate(1.0, 1.0, llm_norm=1.0) == pytest.approx(1.0)
+
+
+class TestNearMatchRobustness:
+    def _make_db(self, tmp_path, sql_list):
+        import sqlite3
+        db = tmp_path / "corpus.db"
+        con = sqlite3.connect(str(db))
+        con.execute(
+            "CREATE TABLE query_logs (id INTEGER PRIMARY KEY, query_num INT, query_id INT, "
+            "title TEXT, start_time TEXT, end_time TEXT, duration_ms INT, rows_returned INT, "
+            "sql_query TEXT)")
+        for i, sql in enumerate(sql_list, 1):
+            con.execute(
+                "INSERT INTO query_logs (query_num, query_id, title, start_time, sql_query) "
+                "VALUES (?,?,?,?,?)",
+                (i, 100000 + i, f"q{i}", "2026-01-01 09:00:00", sql))
+        con.commit(); con.close()
+        return db
+
+    def test_corpus_dedups_literal_variants(self, tmp_path):
+        sqls = [
+            "SELECT x FROM T WHERE investment_type = 'Gold'",
+            "SELECT x FROM T WHERE investment_type = 'Mutual Fund'",
+            "SELECT x FROM T WHERE investment_type = 'Equity'",
+        ]
+        corpus = load_corpus(self._make_db(tmp_path, sqls))
+        assert len(corpus) == 1 and corpus[0]["dup_count"] == 3
+
+    def test_dedup_can_be_disabled(self, tmp_path):
+        sqls = ["SELECT x FROM T WHERE investment_type = 'Gold'"] * 4
+        assert len(load_corpus(self._make_db(tmp_path, sqls), dedup=False)) == 4
+
+    def test_distinct_queries_not_deduped(self, tmp_path):
+        sqls = ["SELECT a FROM T1 WHERE x = 1", "SELECT b FROM T2 WHERE y = 2"]
+        assert len(load_corpus(self._make_db(tmp_path, sqls))) == 2
+
+    def test_score_is_best_topk_blend(self):
+        from score_query import _structural_features, _sql_token_set
+        def entry(sql):
+            info = parse_query(sql)
+            return {"query_num": 1, "query_id": 1, "title": "", "start_time": "",
+                    "sql": sql, "features": _structural_features(info),
+                    "token_set": _sql_token_set(sql)}
+        corpus = [entry(JOIN_SQL), entry(COUNT_STAR_SQL), entry(SINGLE_TABLE_SQL)]
+        info = parse_query(JOIN_SQL)
+        report = score_near_match(JOIN_SQL, info, corpus, top_n=3)
+        beta = SCORING_CONFIG["BETA"]
+        expected = beta * report.best_score + (1 - beta) * report.mean_top5
+        assert report.score == pytest.approx(expected)
+        assert report.mean_top5 <= report.score <= report.best_score
+
+    def test_single_perfect_outlier_tempered(self):
+        from score_query import _structural_features, _sql_token_set
+        def entry(sql):
+            info = parse_query(sql)
+            return {"query_num": 1, "query_id": 1, "title": "", "start_time": "",
+                    "sql": sql, "features": _structural_features(info),
+                    "token_set": _sql_token_set(sql)}
+        corpus = [entry(JOIN_SQL),
+                  entry("SELECT q FROM ZZZ WHERE w = 9"),
+                  entry("SELECT r FROM YYY GROUP BY r")]
+        info = parse_query(JOIN_SQL)
+        report = score_near_match(JOIN_SQL, info, corpus, top_n=3)
+        assert report.best_score == pytest.approx(1.0)
+        assert report.score < 1.0

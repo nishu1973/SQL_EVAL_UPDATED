@@ -5,17 +5,18 @@
     "sql": "SELECT investment_type, AVG(dividends) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-001' GROUP BY investment_type",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.819,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 0.944,
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": 1.0,
       "filter_operator": 1.0,
-      "aggregation_pattern": 0.5,
-      "overall": 0.865
+      "aggregation_pattern": 1.0,
+      "overall": 1.0
     },
     "near_match": {
+      "score": 0.786,
       "best_score": 0.802,
-      "mean_top3": 0.802,
+      "mean_top3": 0.768,
       "top_hits": [
         {
           "rank": 1,
@@ -27,46 +28,44 @@
         },
         {
           "rank": 2,
-          "combined": 0.802,
+          "combined": 0.764,
           "struct": 0.83,
-          "token": 0.75,
-          "title": "Provide the count of holdings of each investment type does investor INV-005 hold",
-          "sql": "SELECT investment_type, COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-005' GROUP BY investmen"
+          "token": 0.643,
+          "title": "Group the holdings of investor INV001 by investment type and show the count for each category.",
+          "sql": "SELECT investment_type, COUNT(*) as holding_count FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-001' G"
         },
         {
           "rank": 3,
-          "combined": 0.802,
-          "struct": 0.83,
-          "token": 0.75,
-          "title": "I need to find out how many holdings of each investment type does investor INV-005 hold",
-          "sql": "SELECT investment_type, COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-005' GROUP BY investmen"
+          "combined": 0.737,
+          "struct": 0.82,
+          "token": 0.583,
+          "title": "What is the total dividend income for investor INV-003 from all holdings",
+          "sql": "SELECT SUM(dividends) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-003'"
         }
       ]
     },
-    "consolidated_overall": 0.84,
+    "consolidated_overall": 0.915,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 0.89 \u2713 (seen 80x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.DIVIDENDS: 0.50 \u2713 (seen 45x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTOR_ID: 1.00 \u2713 (seen 90x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INV: 0.89 \u2713 (seen 80x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 \u2713 (seen 80x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.DIVIDENDS: 1.00 \u2713 (seen 45x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTOR_ID: 1.00 \u2713 (seen 90x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTOR_ID: 1.00 (filtered 90x historically)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INV: 0.89 (filtered 80x historically)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTOR_ID: 1.00 (filtered 90x historically)"
       ],
       "filter_operator": [
         "INVESTOR_ID =: 1.00 (85x for INVESTOR_ID)"
       ],
       "aggregation_pattern": [
-        "AVG(DIVIDENDS): 0.50 (seen 15x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
+        "AVG(DIVIDENDS): 1.00 (seen 15x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
       ]
     }
   },
@@ -76,17 +75,18 @@
     "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.611,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 0.611,
-      "filter_operator": 0.5,
-      "aggregation_pattern": 0.0,
-      "overall": 0.627
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": 1.0,
+      "filter_operator": 1.0,
+      "aggregation_pattern": 0.5,
+      "overall": 0.929
     },
     "near_match": {
+      "score": 0.938,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.838,
       "top_hits": [
         {
           "rank": 1,
@@ -98,42 +98,42 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Provide the count of holdings were purchased before 2022 and are still held by investors",
-          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'"
+          "combined": 0.782,
+          "struct": 0.8,
+          "token": 0.75,
+          "title": "How many holdings does investor INV-015 have in total",
+          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investor_id = 'INV-015'"
         },
         {
           "rank": 3,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "I need to find out how many holdings were purchased before 2022 and are still held by investors",
-          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'"
+          "combined": 0.73,
+          "struct": 0.8,
+          "token": 0.6,
+          "title": "How many ETF holdings exist in the entire portfolio database",
+          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE category = 'ETF' OR investment_type = 'ETF'"
         }
       ]
     },
-    "consolidated_overall": 0.776,
+    "consolidated_overall": 0.932,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 0.61 \u2713 (seen 55x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 1.00 \u2713 (seen 55x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 0.61 (filtered 55x historically)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 1.00 (filtered 55x historically)"
       ],
       "filter_operator": [
-        "PURCHASE_DATE <: 0.50 (10x for PURCHASE_DATE)"
+        "PURCHASE_DATE <: 1.00 (10x for PURCHASE_DATE)"
       ],
       "aggregation_pattern": [
-        "COUNT((*)): 0.00 \u2014 combination not seen historically"
+        "COUNT((*)): 0.50 (valid column, novel aggregation)"
       ]
     }
   },
@@ -143,17 +143,18 @@
     "sql": "SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.75,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": null,
+      "filter_operator": null,
       "aggregation_pattern": 1.0,
-      "overall": 0.9
+      "overall": 1.0
     },
     "near_match": {
+      "score": 0.961,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.927,
       "top_hits": [
         {
           "rank": 1,
@@ -165,29 +166,29 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
+          "combined": 0.93,
           "struct": 1.0,
-          "token": 1.0,
-          "title": "Please provide the total current value of holdings across the platform, broken down by asset category",
-          "sql": "SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category"
+          "token": 0.8,
+          "title": "Show total portfolio value grouped by category (Equity, Debt, Hybrid etc.).",
+          "sql": "SELECT category, SUM(current_value) as total_portfolio_value FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category"
         },
         {
           "rank": 3,
-          "combined": 1.0,
+          "combined": 0.85,
           "struct": 1.0,
-          "token": 1.0,
-          "title": "Can you tell me what the total current value of holdings across the platform, broken down by asset category",
-          "sql": "SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category"
+          "token": 0.571,
+          "title": "Which investment category holds the highest total portfolio value",
+          "sql": "SELECT category, SUM(current_value) as total_portfolio_value FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category OR"
         }
       ]
     },
-    "consolidated_overall": 0.94,
+    "consolidated_overall": 0.985,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.CATEGORY: 0.50 \u2713 (seen 45x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.CATEGORY: 1.00 \u2713 (seen 45x)",
         "ATOM_ENTITY_PORTFOLIO_HOLDING_001.CURRENT_VALUE: 1.00 \u2713 (seen 90x)"
       ],
       "join_pattern": [
@@ -208,16 +209,17 @@
     "probability": {
       "table_familiarity": 1.0,
       "column_coverage": 1.0,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
-      "aggregation_pattern": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": null,
+      "filter_operator": null,
+      "aggregation_pattern": null,
       "overall": 1.0
     },
     "near_match": {
+      "score": 0.635,
       "best_score": 0.665,
-      "mean_top3": 0.665,
+      "mean_top3": 0.596,
       "top_hits": [
         {
           "rank": 1,
@@ -229,26 +231,26 @@
         },
         {
           "rank": 2,
-          "combined": 0.665,
+          "combined": 0.572,
           "struct": 0.7,
-          "token": 0.6,
-          "title": "Please provide the total number of investors in the wealth management database",
-          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001"
+          "token": 0.333,
+          "title": "Show the average time horizon for investors grouped by their risk tolerance level.",
+          "sql": "SELECT risk_tolerance, AVG(time_horizon) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance"
         },
         {
           "rank": 3,
-          "combined": 0.665,
+          "combined": 0.55,
           "struct": 0.7,
-          "token": 0.6,
-          "title": "Can you tell me what the total number of investors in the wealth management database",
-          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001"
+          "token": 0.273,
+          "title": "Display a count of investors grouped by their preferred sector focus.",
+          "sql": "SELECT sector_focus, COUNT(investor_id) AS investor_count FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY sector_focus"
         }
       ]
     },
-    "consolidated_overall": 0.866,
+    "consolidated_overall": 0.854,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_INVESTOR_PROFILE_001"
+        "\u2713 familiar: ATOM_ENTITY_INVESTOR_PROFILE_001"
       ],
       "column_coverage": [
         "ATOM_ENTITY_INVESTOR_PROFILE_001.INVESTOR_NAME: 1.00 \u2713 (seen 85x)"
@@ -268,17 +270,18 @@
     "sql": "SELECT risk_tolerance, COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.941,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
-      "aggregation_pattern": 0.0,
-      "overall": 0.776
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": null,
+      "filter_operator": null,
+      "aggregation_pattern": 0.5,
+      "overall": 0.9
     },
     "near_match": {
+      "score": 0.74,
       "best_score": 0.773,
-      "mean_top3": 0.773,
+      "mean_top3": 0.726,
       "top_hits": [
         {
           "rank": 1,
@@ -290,29 +293,29 @@
         },
         {
           "rank": 2,
-          "combined": 0.773,
-          "struct": 0.83,
-          "token": 0.667,
-          "title": "Display the average time horizon for investors grouped by their risk tolerance level.",
-          "sql": "SELECT risk_tolerance, AVG(time_horizon) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance"
+          "combined": 0.71,
+          "struct": 0.785,
+          "token": 0.571,
+          "title": "What is the total number of investors in the wealth management database",
+          "sql": "SELECT COUNT(*) FROM ATOM_ENTITY_INVESTOR_PROFILE_001"
         },
         {
           "rank": 3,
-          "combined": 0.773,
-          "struct": 0.83,
-          "token": 0.667,
-          "title": "Could you show me the average time horizon for investors grouped by their risk tolerance level.",
-          "sql": "SELECT risk_tolerance, AVG(time_horizon) FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY risk_tolerance"
+          "combined": 0.695,
+          "struct": 0.8,
+          "token": 0.5,
+          "title": "Which sector focus combination is the most common among investors",
+          "sql": "SELECT sector_focus, COUNT(*) as investor_count FROM ATOM_ENTITY_INVESTOR_PROFILE_001 GROUP BY sector_focus ORDER BY inv"
         }
       ]
     },
-    "consolidated_overall": 0.775,
+    "consolidated_overall": 0.836,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_INVESTOR_PROFILE_001"
+        "\u2713 familiar: ATOM_ENTITY_INVESTOR_PROFILE_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_INVESTOR_PROFILE_001.RISK_TOLERANCE: 0.94 \u2713 (seen 80x)"
+        "ATOM_ENTITY_INVESTOR_PROFILE_001.RISK_TOLERANCE: 1.00 \u2713 (seen 80x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
@@ -321,7 +324,7 @@
       "filter_familiarity": [],
       "filter_operator": [],
       "aggregation_pattern": [
-        "COUNT((*)): 0.00 \u2014 combination not seen historically"
+        "COUNT((*)): 0.50 (valid column, novel aggregation)"
       ]
     }
   },
@@ -331,17 +334,18 @@
     "sql": "SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.investor_id = p.investor_id WHERE h.investment_type = 'Mutual Fund' GROUP BY p.investor_name",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.963,
+      "column_coverage": 1.0,
       "join_pattern": 1.0,
       "join_key_validity": 1.0,
-      "filter_familiarity": 0.767,
+      "filter_familiarity": 1.0,
       "filter_operator": 1.0,
-      "aggregation_pattern": 0.5,
-      "overall": 0.908
+      "aggregation_pattern": 1.0,
+      "overall": 1.0
     },
     "near_match": {
+      "score": 0.927,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.82,
       "top_hits": [
         {
           "rank": 1,
@@ -353,31 +357,31 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "List all investors who hold Gold investments and their total gold value.",
-          "sql": "SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_"
+          "combined": 0.77,
+          "struct": 0.815,
+          "token": 0.688,
+          "title": "Identify the investor whos hold Private Equity investments",
+          "sql": "SELECT DISTINCT p.investor_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.in"
         },
         {
           "rank": 3,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Can you tell me ?\u00a2\u00ac\u00c4\u00ac\u00ee list all investors who hold gold investments and their total gold value.",
-          "sql": "SELECT p.investor_name, SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_"
+          "combined": 0.691,
+          "struct": 0.692,
+          "token": 0.688,
+          "title": "What is the total current market value of holdings for investors with an 'Aggressive' risk profile",
+          "sql": "SELECT SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.invest"
         }
       ]
     },
-    "consolidated_overall": 0.945,
+    "consolidated_overall": 0.971,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001",
-        "\u2713 ATOM_ENTITY_INVESTOR_PROFILE_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001",
+        "\u2713 familiar: ATOM_ENTITY_INVESTOR_PROFILE_001"
       ],
       "column_coverage": [
         "ATOM_ENTITY_PORTFOLIO_HOLDING_001.CURRENT_VALUE: 1.00 \u2713 (seen 90x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 0.89 \u2713 (seen 80x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 \u2713 (seen 80x)",
         "ATOM_ENTITY_INVESTOR_PROFILE_001.INVESTOR_NAME: 1.00 \u2713 (seen 85x)"
       ],
       "join_pattern": [
@@ -390,13 +394,12 @@
         "ATOM_ENTITY_INVESTOR_PROFILE_001.INVESTOR_ID: 1.00 (used as join key 425x)"
       ],
       "filter_familiarity": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 0.77 (filtered 69x historically)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 (filtered 69x historically)"
       ],
       "filter_operator": [
         "INVESTMENT_TYPE =: 1.00 (24x for INVESTMENT_TYPE)"
       ],
       "aggregation_pattern": [
-        "SUM(H): 0.00 \u2014 combination not seen historically",
         "SUM(CURRENT_VALUE): 1.00 (seen 105x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
       ]
     }
@@ -407,53 +410,54 @@
     "sql": "SELECT p.risk_tolerance, COUNT(h.holding_id) AS total_holdings FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.investor_id = p.investor_id GROUP BY p.risk_tolerance",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.554,
+      "column_coverage": 0.883,
       "join_pattern": 1.0,
       "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
-      "aggregation_pattern": 0.5,
-      "overall": 0.826
+      "filter_familiarity": null,
+      "filter_operator": null,
+      "aggregation_pattern": 1.0,
+      "overall": 0.971
     },
     "near_match": {
-      "best_score": 0.911,
-      "mean_top3": 0.911,
+      "score": 0.878,
+      "best_score": 0.956,
+      "mean_top3": 0.743,
       "top_hits": [
         {
           "rank": 1,
-          "combined": 0.911,
-          "struct": 0.93,
+          "combined": 0.956,
+          "struct": 1.0,
           "token": 0.875,
           "title": "Group the total number of holdings by the risk tolerance of the investors who own them.",
           "sql": "SELECT t2.risk_tolerance, COUNT(t1.holding_id) AS total_holdings"
         },
         {
           "rank": 2,
-          "combined": 0.911,
-          "struct": 0.93,
-          "token": 0.875,
-          "title": "Group the total number of holdings by the risk tolerance of the investors who own them.",
-          "sql": "SELECT t2.risk_tolerance, COUNT(t1.holding_id) AS total_holdings"
+          "combined": 0.64,
+          "struct": 0.73,
+          "token": 0.474,
+          "title": "List all investors with total taxes paid above 500000.",
+          "sql": "SELECT p.investor_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.investor_id"
         },
         {
           "rank": 3,
-          "combined": 0.911,
-          "struct": 0.93,
-          "token": 0.875,
-          "title": "Can you tell me ?\u00a2\u00ac\u00c4\u00ac\u00ee group the total number of holdings by the risk tolerance of the investors who own them.",
-          "sql": "SELECT t2.risk_tolerance, COUNT(t1.holding_id) AS total_holdings"
+          "combined": 0.634,
+          "struct": 0.73,
+          "token": 0.455,
+          "title": "Which investor has paid the highest total taxes, and what is that amount",
+          "sql": "SELECT p.investor_id, p.investor_name, SUM(h.taxes_paid) as total_taxes_paid FROM ATOM_ENTITY_INVESTOR_PROFILE_001 p JOI"
         }
       ]
     },
-    "consolidated_overall": 0.86,
+    "consolidated_overall": 0.934,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001",
-        "\u2713 ATOM_ENTITY_INVESTOR_PROFILE_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001",
+        "\u2713 familiar: ATOM_ENTITY_INVESTOR_PROFILE_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.HOLDING_ID: 0.17 \u2713 (seen 15x)",
-        "ATOM_ENTITY_INVESTOR_PROFILE_001.RISK_TOLERANCE: 0.94 \u2713 (seen 80x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.HOLDING_ID: 0.83 \u2713 (seen 15x)",
+        "ATOM_ENTITY_INVESTOR_PROFILE_001.RISK_TOLERANCE: 1.00 \u2713 (seen 80x)"
       ],
       "join_pattern": [
         "ATOM_ENTITY_PORTFOLIO_HOLDING_001 + ATOM_ENTITY_INVESTOR_PROFILE_001: 1.00 (seen 110x)"
@@ -467,7 +471,6 @@
       "filter_familiarity": [],
       "filter_operator": [],
       "aggregation_pattern": [
-        "COUNT(H): 0.00 \u2014 combination not seen historically",
         "COUNT(HOLDING_ID): 1.00 (seen 5x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
       ]
     }
@@ -478,17 +481,18 @@
     "sql": "SELECT p.investor_name, SUM(c.amount) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id = p.investor_id WHERE c.type = 'Dividend' GROUP BY p.investor_name",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.917,
+      "column_coverage": 1.0,
       "join_pattern": 0.091,
       "join_key_validity": 1.0,
       "filter_familiarity": 1.0,
       "filter_operator": 1.0,
-      "aggregation_pattern": 0.5,
-      "overall": 0.752
+      "aggregation_pattern": 1.0,
+      "overall": 0.818
     },
     "near_match": {
+      "score": 0.699,
       "best_score": 0.732,
-      "mean_top3": 0.732,
+      "mean_top3": 0.662,
       "top_hits": [
         {
           "rank": 1,
@@ -500,30 +504,30 @@
         },
         {
           "rank": 2,
-          "combined": 0.732,
-          "struct": 0.815,
-          "token": 0.579,
-          "title": "Find the names of investors who made a 'SIP' type cash flow transaction in January 2024.",
+          "combined": 0.679,
+          "struct": 0.715,
+          "token": 0.611,
+          "title": "Which investors have received dividend cash flows from HDFC Bank as source",
           "sql": "SELECT DISTINCT p.investor_name FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id"
         },
         {
           "rank": 3,
-          "combined": 0.732,
-          "struct": 0.815,
-          "token": 0.579,
-          "title": "Can you find the names of investors who made a 'SIP' type cash flow transaction in January 2024.",
-          "sql": "SELECT DISTINCT p.investor_name FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON c.investor_id"
+          "combined": 0.574,
+          "struct": 0.534,
+          "token": 0.647,
+          "title": "Show total Lump Sum investments made per investor across all time.",
+          "sql": "SELECT investor_id, SUM(amount) as total_lump_sum FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'Lump Sum' GROUP BY investo"
         }
       ]
     },
-    "consolidated_overall": 0.744,
+    "consolidated_overall": 0.771,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_EVENT_CASH_FLOW_001",
-        "\u2713 ATOM_ENTITY_INVESTOR_PROFILE_001"
+        "\u2713 familiar: ATOM_EVENT_CASH_FLOW_001",
+        "\u2713 familiar: ATOM_ENTITY_INVESTOR_PROFILE_001"
       ],
       "column_coverage": [
-        "ATOM_EVENT_CASH_FLOW_001.AMOUNT: 0.75 \u2713 (seen 105x)",
+        "ATOM_EVENT_CASH_FLOW_001.AMOUNT: 1.00 \u2713 (seen 105x)",
         "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 \u2713 (seen 140x)",
         "ATOM_ENTITY_INVESTOR_PROFILE_001.INVESTOR_NAME: 1.00 \u2713 (seen 85x)"
       ],
@@ -543,7 +547,6 @@
         "TYPE =: 1.00 (115x for TYPE)"
       ],
       "aggregation_pattern": [
-        "SUM(C): 0.00 \u2014 combination not seen historically",
         "SUM(AMOUNT): 1.00 (seen 110x on ATOM_EVENT_CASH_FLOW_001)"
       ]
     }
@@ -555,16 +558,17 @@
     "probability": {
       "table_familiarity": 1.0,
       "column_coverage": 1.0,
-      "join_pattern": 0.5,
+      "join_pattern": 0.336,
       "join_key_validity": 1.0,
       "filter_familiarity": 1.0,
       "filter_operator": 1.0,
-      "aggregation_pattern": 1.0,
-      "overall": 0.889
+      "aggregation_pattern": null,
+      "overall": 0.853
     },
     "near_match": {
+      "score": 0.765,
       "best_score": 0.826,
-      "mean_top3": 0.826,
+      "mean_top3": 0.686,
       "top_hits": [
         {
           "rank": 1,
@@ -576,28 +580,28 @@
         },
         {
           "rank": 2,
-          "combined": 0.826,
-          "struct": 0.867,
-          "token": 0.75,
-          "title": "Enumerate all names of investors who have a 'Retirement Planning' goal with a shortfall greater than 1,000,000.",
-          "sql": "SELECT t2.investor_name, t1.investment_name"
+          "combined": 0.668,
+          "struct": 0.633,
+          "token": 0.733,
+          "title": "For investor INV001, list all holdings that match their stated preferred investment category and are linked to their 'Gr",
+          "sql": "SELECT h.investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.investor_"
         },
         {
           "rank": 3,
-          "combined": 0.826,
-          "struct": 0.867,
-          "token": 0.75,
-          "title": "Can you list all names of investors who have a 'Retirement Planning' goal with a shortfall greater than 1,000,000.",
-          "sql": "SELECT t2.investor_name, t1.investment_name"
+          "combined": 0.564,
+          "struct": 0.483,
+          "token": 0.714,
+          "title": "Which investors hold Private Equity investments",
+          "sql": "SELECT DISTINCT p.investor_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.in"
         }
       ]
     },
-    "consolidated_overall": 0.864,
+    "consolidated_overall": 0.817,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001",
-        "\u2713 ATOM_ENTITY_INVESTOR_PROFILE_001",
-        "\u2713 ATOM_ENTITY_INVESTMENT_GOAL_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001",
+        "\u2713 familiar: ATOM_ENTITY_INVESTOR_PROFILE_001",
+        "\u2713 familiar: ATOM_ENTITY_INVESTMENT_GOAL_001"
       ],
       "column_coverage": [
         "ATOM_ENTITY_INVESTOR_PROFILE_001.INVESTOR_NAME: 1.00 \u2713 (seen 85x)",
@@ -630,17 +634,18 @@
     "sql": "SELECT g.investment_goal, COUNT(*) FROM ATOM_ENTITY_INVESTMENT_GOAL_001 g LEFT JOIN ATOM_EVENT_CASH_FLOW_001 c ON g.investor_id = c.investor_id WHERE c.amount > 50000 GROUP BY g.investment_goal ORDER BY COUNT(*) DESC",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.875,
+      "column_coverage": 1.0,
       "join_pattern": 0.111,
       "join_key_validity": 1.0,
-      "filter_familiarity": 0.036,
+      "filter_familiarity": 0.571,
       "filter_operator": 1.0,
-      "aggregation_pattern": 0.0,
-      "overall": 0.553
+      "aggregation_pattern": 0.5,
+      "overall": 0.708
     },
     "near_match": {
+      "score": 0.45,
       "best_score": 0.492,
-      "mean_top3": 0.492,
+      "mean_top3": 0.378,
       "top_hits": [
         {
           "rank": 1,
@@ -652,31 +657,31 @@
         },
         {
           "rank": 2,
-          "combined": 0.492,
-          "struct": 0.522,
-          "token": 0.435,
-          "title": "Calculate the average withdrawal amount for investors who have fully completed (100% progress) any of their investment g",
-          "sql": "SELECT AVG(ABS(c.amount)) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON c.investor_id = g.in"
+          "combined": 0.331,
+          "struct": 0.268,
+          "token": 0.45,
+          "title": "Which investors have made more than 3 SIP transactions",
+          "sql": "SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3"
         },
         {
           "rank": 3,
-          "combined": 0.492,
-          "struct": 0.522,
-          "token": 0.435,
-          "title": "Can you calculate the average withdrawal amount for investors who have fully completed (100% progress) any of their inve",
-          "sql": "SELECT AVG(ABS(c.amount)) FROM ATOM_EVENT_CASH_FLOW_001 c JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON c.investor_id = g.in"
+          "combined": 0.312,
+          "struct": 0.197,
+          "token": 0.524,
+          "title": "Which investor has the highest total Lump Sum investment amount",
+          "sql": "SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'Lump Sum' GROUP BY investor_id ORDER BY SUM(amount) DESC "
         }
       ]
     },
-    "consolidated_overall": 0.528,
+    "consolidated_overall": 0.605,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_INVESTMENT_GOAL_001",
-        "\u2713 ATOM_EVENT_CASH_FLOW_001"
+        "\u2713 familiar: ATOM_ENTITY_INVESTMENT_GOAL_001",
+        "\u2713 familiar: ATOM_EVENT_CASH_FLOW_001"
       ],
       "column_coverage": [
         "ATOM_ENTITY_INVESTMENT_GOAL_001.INVESTMENT_GOAL: 1.00 \u2713 (seen 40x)",
-        "ATOM_EVENT_CASH_FLOW_001.AMOUNT: 0.75 \u2713 (seen 105x)"
+        "ATOM_EVENT_CASH_FLOW_001.AMOUNT: 1.00 \u2713 (seen 105x)"
       ],
       "join_pattern": [
         "ATOM_ENTITY_INVESTMENT_GOAL_001 + ATOM_EVENT_CASH_FLOW_001: 0.11 (seen 5x)"
@@ -688,14 +693,14 @@
         "ATOM_EVENT_CASH_FLOW_001.INVESTOR_ID: 1.00 (used as join key 30x)"
       ],
       "filter_familiarity": [
-        "ATOM_EVENT_CASH_FLOW_001.AMOUNT: 0.04 (filtered 5x historically)"
+        "ATOM_EVENT_CASH_FLOW_001.AMOUNT: 0.57 (filtered 5x historically)"
       ],
       "filter_operator": [
         "AMOUNT >: 1.00 (5x for AMOUNT)"
       ],
       "aggregation_pattern": [
-        "COUNT((*)): 0.00 \u2014 combination not seen historically",
-        "COUNT((*)): 0.00 \u2014 combination not seen historically"
+        "COUNT((*)): 0.50 (valid column, novel aggregation)",
+        "COUNT((*)): 0.50 (valid column, novel aggregation)"
       ]
     }
   },
@@ -705,17 +710,18 @@
     "sql": "SELECT x.foo, SUM(x.bar) FROM UNKNOWN_TABLE x JOIN ANOTHER_UNKNOWN y ON x.id = y.id WHERE x.baz = 'test'",
     "probability": {
       "table_familiarity": 0.0,
-      "column_coverage": 1.0,
+      "column_coverage": 0.0,
       "join_pattern": 0.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
+      "join_key_validity": 0.0,
+      "filter_familiarity": 0.0,
+      "filter_operator": null,
       "aggregation_pattern": 0.0,
       "overall": 0.0
     },
     "near_match": {
+      "score": 0.153,
       "best_score": 0.156,
-      "mean_top3": 0.156,
+      "mean_top3": 0.149,
       "top_hits": [
         {
           "rank": 1,
@@ -727,38 +733,48 @@
         },
         {
           "rank": 2,
-          "combined": 0.156,
+          "combined": 0.148,
           "struct": 0.03,
-          "token": 0.389,
-          "title": "Please provide the total current market value of holdings for investors with an 'Aggressive' risk profile",
-          "sql": "SELECT SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.invest"
+          "token": 0.368,
+          "title": "What is the total cost basis vs total current value for all Conservative investors",
+          "sql": "SELECT SUM(h.cost), SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 "
         },
         {
           "rank": 3,
-          "combined": 0.156,
+          "combined": 0.142,
           "struct": 0.03,
-          "token": 0.389,
-          "title": "Can you tell me what the total current market value of holdings for investors with an 'Aggressive' risk profile",
-          "sql": "SELECT SUM(h.current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 h JOIN ATOM_ENTITY_INVESTOR_PROFILE_001 p ON h.invest"
+          "token": 0.35,
+          "title": "For investors pursuing 'Growth' goals, what is the total amount currently recommended for 'Buy' rebalancing actions",
+          "sql": "SELECT SUM(r.amount) FROM ATOM_EVENT_REBALANCING_ACTION_001 r JOIN ATOM_ENTITY_INVESTMENT_GOAL_001 g ON r.investor_id = "
         }
       ]
     },
-    "consolidated_overall": 0.062,
+    "consolidated_overall": 0.061,
     "detail": {
       "table_familiarity": [
-        "\u2717 UNKNOWN: UNKNOWN_TABLE",
-        "\u2717 UNKNOWN: ANOTHER_UNKNOWN"
+        "\u2717 INVALID (not in schema): UNKNOWN_TABLE",
+        "\u2717 INVALID (not in schema): ANOTHER_UNKNOWN"
       ],
-      "column_coverage": [],
+      "column_coverage": [
+        "UNKNOWN_TABLE.FOO: 0.00 \u2717 INVALID (seen 0x)",
+        "UNKNOWN_TABLE.BAR: 0.00 \u2717 INVALID (seen 0x)",
+        "UNKNOWN_TABLE.BAZ: 0.00 \u2717 INVALID (seen 0x)"
+      ],
       "join_pattern": [
         "UNKNOWN_TABLE + ANOTHER_UNKNOWN: 0.00 (NEVER SEEN \u2014 high risk)"
       ],
-      "join_key_validity": [],
-      "filter_familiarity": [],
+      "join_key_validity": [
+        "UNKNOWN_TABLE.ID: 0.00 (\u2717 INVALID column)",
+        "UNKNOWN_TABLE.ID: 0.00 (\u2717 INVALID column)",
+        "ANOTHER_UNKNOWN.ID: 0.00 (\u2717 INVALID column)",
+        "ANOTHER_UNKNOWN.ID: 0.00 (\u2717 INVALID column)"
+      ],
+      "filter_familiarity": [
+        "UNKNOWN_TABLE.BAZ: 0.00 (\u2717 INVALID column)"
+      ],
       "filter_operator": [],
       "aggregation_pattern": [
-        "SUM(X): 0.00 \u2014 combination not seen historically",
-        "SUM(BAR): 0.00 \u2014 combination not seen historically"
+        "SUM(BAR): 0.00 \u2014 \u2717 INVALID column"
       ]
     }
   },
@@ -769,16 +785,17 @@
     "probability": {
       "table_familiarity": 1.0,
       "column_coverage": 0.0,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
       "filter_familiarity": 0.0,
-      "filter_operator": 1.0,
-      "aggregation_pattern": 1.0,
+      "filter_operator": null,
+      "aggregation_pattern": null,
       "overall": 0.364
     },
     "near_match": {
+      "score": 0.573,
       "best_score": 0.584,
-      "mean_top3": 0.584,
+      "mean_top3": 0.56,
       "top_hits": [
         {
           "rank": 1,
@@ -790,36 +807,36 @@
         },
         {
           "rank": 2,
-          "combined": 0.584,
+          "combined": 0.549,
           "struct": 0.6,
-          "token": 0.556,
-          "title": "List holdings where taxes paid exceeds 10% of the current value.",
-          "sql": "SELECT investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE taxes_paid > 0.1 * current_value"
+          "token": 0.455,
+          "title": "Show holdings purchased in the last 12 months with negative returns.",
+          "sql": "SELECT * FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date >= date('2026-04-28', '-12 months') AND returns_pct "
         },
         {
           "rank": 3,
-          "combined": 0.584,
+          "combined": 0.546,
           "struct": 0.6,
-          "token": 0.556,
-          "title": "Can you tell me ?\u00a2\u00ac\u00c4\u00ac\u00ee list holdings where taxes paid exceeds 10% of the current value.",
-          "sql": "SELECT investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE taxes_paid > 0.1 * current_value"
+          "token": 0.444,
+          "title": "Which holdings were purchased before 2022 and are still held by investors",
+          "sql": "SELECT investment_name FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date < '2022-01-01'"
         }
       ]
     },
-    "consolidated_overall": 0.452,
+    "consolidated_overall": 0.448,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.NEVER_USED_COL: 0.00 \u2717 (unseen) (seen 0x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.NEVER_USED_COL: 0.00 \u2717 INVALID (seen 0x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.NEVER_USED_COL: 0.00 (never filtered on \u2014 unusual)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.NEVER_USED_COL: 0.00 (\u2717 INVALID column)"
       ],
       "filter_operator": [],
       "aggregation_pattern": []
@@ -831,53 +848,53 @@
     "sql": "SELECT STDDEV(current_value), VARIANCE(cost) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.556,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
-      "aggregation_pattern": 1.0,
-      "overall": 0.778
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": null,
+      "filter_operator": null,
+      "aggregation_pattern": null,
+      "overall": 1.0
     },
     "near_match": {
-      "best_score": 0.615,
-      "mean_top3": 0.615,
+      "score": 0.622,
+      "best_score": 0.626,
+      "mean_top3": 0.622,
       "top_hits": [
         {
           "rank": 1,
-          "combined": 0.615,
-          "struct": 0.75,
+          "combined": 0.626,
+          "struct": 0.767,
           "token": 0.364,
           "title": "What is the total current value of holdings across the platform, broken down by asset category",
           "sql": "SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category"
         },
         {
           "rank": 2,
-          "combined": 0.615,
-          "struct": 0.75,
+          "combined": 0.626,
+          "struct": 0.767,
           "token": 0.364,
-          "title": "Please provide the total current value of holdings across the platform, broken down by asset category",
-          "sql": "SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category"
+          "title": "What is the average cost basis per investment type across the entire database",
+          "sql": "SELECT investment_type, AVG(cost) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type"
         },
         {
           "rank": 3,
-          "combined": 0.615,
-          "struct": 0.75,
-          "token": 0.364,
-          "title": "Can you tell me what the total current value of holdings across the platform, broken down by asset category",
-          "sql": "SELECT category, SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY category"
+          "combined": 0.614,
+          "struct": 0.7,
+          "token": 0.455,
+          "title": "What is the total cost vs total current value for Mutual Fund holdings across all investors",
+          "sql": "SELECT SUM(cost), SUM(current_value) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_type = 'Mutual Fund'"
         }
       ]
     },
-    "consolidated_overall": 0.713,
+    "consolidated_overall": 0.849,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
         "ATOM_ENTITY_PORTFOLIO_HOLDING_001.CURRENT_VALUE: 1.00 \u2713 (seen 90x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.VARIANCE: 0.00 \u2717 (unseen) (seen 0x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.COST: 0.67 \u2713 (seen 60x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.COST: 1.00 \u2713 (seen 60x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
@@ -894,17 +911,18 @@
     "sql": "SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investment_type LIKE '%Gold%'",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.657,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 0.535,
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": 0.961,
       "filter_operator": 1.0,
       "aggregation_pattern": 1.0,
-      "overall": 0.803
+      "overall": 0.992
     },
     "near_match": {
+      "score": 0.933,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.849,
       "top_hits": [
         {
           "rank": 1,
@@ -916,42 +934,39 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Provide the count of investors hold Gold investments in their portfolio",
-          "sql": "SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investm"
+          "combined": 0.773,
+          "struct": 0.92,
+          "token": 0.5,
+          "title": "Which investor holds the highest total Gold investment value",
+          "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investment_type LIKE '%"
         },
         {
           "rank": 3,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "I need to find out how many investors hold Gold investments in their portfolio",
-          "sql": "SELECT COUNT(DISTINCT investor_id) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investm"
+          "combined": 0.773,
+          "struct": 0.92,
+          "token": 0.5,
+          "title": "Which investor holds the lowest total Gold investment value",
+          "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE investment_name LIKE '%Gold%' OR investment_type LIKE '%"
         }
       ]
     },
-    "consolidated_overall": 0.882,
+    "consolidated_overall": 0.968,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.DISTINCT: 0.17 \u2713 (seen 15x)",
         "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTOR_ID: 1.00 \u2713 (seen 90x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_NAME: 0.78 \u2713 (seen 70x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.LIKE: 0.67 \u2713 (seen 60x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_NAME: 1.00 \u2713 (seen 70x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 \u2713 (seen 80x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_NAME: 0.22 (filtered 20x historically)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.LIKE: 0.67 (filtered 60x historically)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.GOLD: 0.44 (filtered 40x historically)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 0.77 (filtered 69x historically)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_NAME: 0.94 (filtered 20x historically)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 (filtered 69x historically)"
       ],
       "filter_operator": [
         "INVESTMENT_NAME LIKE: 1.00 (20x for INVESTMENT_NAME)"
@@ -967,68 +982,67 @@
     "sql": "SELECT investment_type, SUM(cost) FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2020-01-01' AND '2023-12-31' GROUP BY investment_type",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.569,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 0.361,
-      "filter_operator": 0.5,
-      "aggregation_pattern": 0.524,
-      "overall": 0.636
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": 1.0,
+      "filter_operator": 1.0,
+      "aggregation_pattern": 1.0,
+      "overall": 1.0
     },
     "near_match": {
-      "best_score": 0.659,
-      "mean_top3": 0.659,
+      "score": 0.734,
+      "best_score": 0.753,
+      "mean_top3": 0.716,
       "top_hits": [
         {
           "rank": 1,
-          "combined": 0.659,
-          "struct": 0.73,
-          "token": 0.526,
-          "title": "Which investor bought the most holdings in 2023",
-          "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31' GROU"
+          "combined": 0.753,
+          "struct": 0.89,
+          "token": 0.5,
+          "title": "What was the total investment cost made in 2022",
+          "sql": "SELECT SUM(cost) as total_cost FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date LIKE '2022-%'"
         },
         {
           "rank": 2,
-          "combined": 0.659,
-          "struct": 0.73,
-          "token": 0.526,
-          "title": "Identify the investor who bought the most holdings in 2023",
-          "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31' GROU"
+          "combined": 0.7,
+          "struct": 0.867,
+          "token": 0.391,
+          "title": "What is the total investment (cost) made in 2022 vs 2023 vs 2024",
+          "sql": "SELECT CAST(substr(purchase_date, 1, 4) AS INTEGER) as purchase_year, SUM(cost) as total_investment_cost FROM ATOM_ENTIT"
         },
         {
           "rank": 3,
-          "combined": 0.659,
-          "struct": 0.73,
-          "token": 0.526,
-          "title": "I want to know which investor bought the most holdings in 2023",
-          "sql": "SELECT investor_id FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 WHERE purchase_date BETWEEN '2023-01-01' AND '2023-12-31' GROU"
+          "combined": 0.695,
+          "struct": 0.867,
+          "token": 0.375,
+          "title": "In which of the years 2022, 2023, or 2024 was the total investment (cost) highest",
+          "sql": "SELECT CAST(substr(purchase_date, 1, 4) AS INTEGER) as purchase_year, SUM(cost) as total_investment_cost FROM ATOM_ENTIT"
         }
       ]
     },
-    "consolidated_overall": 0.645,
+    "consolidated_overall": 0.894,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 0.89 \u2713 (seen 80x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.COST: 0.67 \u2713 (seen 60x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 0.61 \u2713 (seen 55x)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.BETWEEN: 0.11 \u2713 (seen 10x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 \u2713 (seen 80x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.COST: 1.00 \u2713 (seen 60x)",
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 1.00 \u2713 (seen 55x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 0.61 (filtered 55x historically)",
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.BETWEEN: 0.11 (filtered 10x historically)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.PURCHASE_DATE: 1.00 (filtered 55x historically)"
       ],
       "filter_operator": [
-        "PURCHASE_DATE BETWEEN: 0.50 (10x for PURCHASE_DATE)"
+        "PURCHASE_DATE BETWEEN: 1.00 (10x for PURCHASE_DATE)"
       ],
       "aggregation_pattern": [
-        "SUM(COST): 0.52 (seen 55x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
+        "SUM(COST): 1.00 (seen 55x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
       ]
     }
   },
@@ -1038,17 +1052,18 @@
     "sql": "SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.536,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 0.571,
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": 1.0,
       "filter_operator": 1.0,
-      "aggregation_pattern": 0.0,
-      "overall": 0.633
+      "aggregation_pattern": 0.5,
+      "overall": 0.929
     },
     "near_match": {
+      "score": 0.955,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.875,
       "top_hits": [
         {
           "rank": 1,
@@ -1060,45 +1075,43 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Identify the investor whos have made more than 3 SIP transactions",
-          "sql": "SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3"
+          "combined": 0.813,
+          "struct": 0.92,
+          "token": 0.615,
+          "title": "How many investors have made at least one Lump Sum investment",
+          "sql": "SELECT COUNT(DISTINCT investor_id) FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'Lump Sum'"
         },
         {
           "rank": 3,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "I want to know which investors have made more than 3 SIP transactions",
-          "sql": "SELECT investor_id FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'SIP' GROUP BY investor_id HAVING COUNT(*) > 3"
+          "combined": 0.812,
+          "struct": 0.865,
+          "token": 0.714,
+          "title": "Show the count and total amount of Dividend transactions per investor.",
+          "sql": "SELECT investor_id, COUNT(*), SUM(amount) FROM ATOM_EVENT_CASH_FLOW_001 WHERE type = 'Dividend' GROUP BY investor_id"
         }
       ]
     },
-    "consolidated_overall": 0.78,
+    "consolidated_overall": 0.939,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_EVENT_CASH_FLOW_001"
+        "\u2713 familiar: ATOM_EVENT_CASH_FLOW_001"
       ],
       "column_coverage": [
-        "ATOM_EVENT_CASH_FLOW_001.INVESTOR_ID: 0.46 \u2713 (seen 65x)",
-        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 \u2713 (seen 140x)",
-        "ATOM_EVENT_CASH_FLOW_001.SIP: 0.14 \u2713 (seen 20x)"
+        "ATOM_EVENT_CASH_FLOW_001.INVESTOR_ID: 1.00 \u2713 (seen 65x)",
+        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 \u2713 (seen 140x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 (filtered 140x historically)",
-        "ATOM_EVENT_CASH_FLOW_001.SIP: 0.14 (filtered 20x historically)"
+        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 (filtered 140x historically)"
       ],
       "filter_operator": [
         "TYPE =: 1.00 (115x for TYPE)"
       ],
       "aggregation_pattern": [
-        "COUNT((*)): 0.00 \u2014 combination not seen historically"
+        "COUNT((*)): 0.50 (valid column, novel aggregation)"
       ]
     }
   },
@@ -1108,17 +1121,18 @@
     "sql": "SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date) FROM ATOM_EVENT_CASH_FLOW_001), '-6 months')",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.3,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 0.3,
-      "filter_operator": 0.043,
-      "aggregation_pattern": 0.0,
-      "overall": 0.439
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": 1.0,
+      "filter_operator": 0.174,
+      "aggregation_pattern": 0.5,
+      "overall": 0.87
     },
     "near_match": {
+      "score": 0.928,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.826,
       "top_hits": [
         {
           "rank": 1,
@@ -1130,48 +1144,42 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Display all Dividend cash flow events in the last 6 months.",
-          "sql": "SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date) FROM ATOM_EVENT_CA"
+          "combined": 0.744,
+          "struct": 0.83,
+          "token": 0.583,
+          "title": "How many Redemption transactions has investor INV-008 made",
+          "sql": "SELECT COUNT(*) FROM ATOM_EVENT_CASH_FLOW_001 WHERE investor_id = 'INV-008' AND type = 'Redemption'"
         },
         {
           "rank": 3,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Could you show me all Dividend cash flow events in the last 6 months.",
-          "sql": "SELECT * FROM ATOM_EVENT_CASH_FLOW_001 WHERE type LIKE '%Dividend%' AND date > date((SELECT MAX(date) FROM ATOM_EVENT_CA"
+          "combined": 0.736,
+          "struct": 0.93,
+          "token": 0.375,
+          "title": "What is the withdrawal to deposit ratio for all investors",
+          "sql": "SELECT (SELECT SUM(amount) FROM ATOM_EVENT_CASH_FLOW_001 WHERE type IN ('Withdrawal', 'Redemption', 'SWP')) * 1.0 / (SEL"
         }
       ]
     },
-    "consolidated_overall": 0.663,
+    "consolidated_overall": 0.893,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_EVENT_CASH_FLOW_001"
+        "\u2713 familiar: ATOM_EVENT_CASH_FLOW_001"
       ],
       "column_coverage": [
-        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 \u2713 (seen 140x)",
-        "ATOM_EVENT_CASH_FLOW_001.LIKE: 0.04 \u2713 (seen 5x)",
-        "ATOM_EVENT_CASH_FLOW_001.DIVIDEND: 0.29 \u2713 (seen 40x)",
-        "ATOM_EVENT_CASH_FLOW_001.ATOM_EVENT_CASH_FLOW_001: 0.07 \u2713 (seen 10x)"
+        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 \u2713 (seen 140x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
       ],
       "join_key_validity": [],
       "filter_familiarity": [
-        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 (filtered 140x historically)",
-        "ATOM_EVENT_CASH_FLOW_001.LIKE: 0.04 (filtered 5x historically)",
-        "ATOM_EVENT_CASH_FLOW_001.DIVIDEND: 0.29 (filtered 40x historically)",
-        "ATOM_EVENT_CASH_FLOW_001.ATOM_EVENT_CASH_FLOW_001: 0.07 (filtered 10x historically)"
+        "ATOM_EVENT_CASH_FLOW_001.TYPE: 1.00 (filtered 140x historically)"
       ],
       "filter_operator": [
-        "TYPE LIKE: 0.04 (5x for TYPE)"
+        "TYPE LIKE: 0.17 (5x for TYPE)"
       ],
       "aggregation_pattern": [
-        "MAX((*)): 0.00 \u2014 combination not seen historically"
+        "MAX((*)): 0.50 (valid column, novel aggregation)"
       ]
     }
   },
@@ -1181,17 +1189,18 @@
     "sql": "SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) DESC LIMIT 1",
     "probability": {
       "table_familiarity": 1.0,
-      "column_coverage": 0.889,
-      "join_pattern": 1.0,
-      "join_key_validity": 1.0,
-      "filter_familiarity": 1.0,
-      "filter_operator": 1.0,
-      "aggregation_pattern": 0.5,
-      "overall": 0.856
+      "column_coverage": 1.0,
+      "join_pattern": null,
+      "join_key_validity": null,
+      "filter_familiarity": null,
+      "filter_operator": null,
+      "aggregation_pattern": 1.0,
+      "overall": 1.0
     },
     "near_match": {
+      "score": 0.976,
       "best_score": 1.0,
-      "mean_top3": 1.0,
+      "mean_top3": 0.949,
       "top_hits": [
         {
           "rank": 1,
@@ -1203,29 +1212,29 @@
         },
         {
           "rank": 2,
-          "combined": 1.0,
+          "combined": 0.946,
           "struct": 1.0,
-          "token": 1.0,
-          "title": "Identify the investment type has the highest average cost basis",
-          "sql": "SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) DESC LIMIT 1"
+          "token": 0.846,
+          "title": "Which investment type has the lowest average cost basis",
+          "sql": "SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) ASC LIMIT 1"
         },
         {
           "rank": 3,
-          "combined": 1.0,
-          "struct": 1.0,
-          "token": 1.0,
-          "title": "Do you know which investment type has the highest average cost basis",
-          "sql": "SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(cost) DESC LIMIT 1"
+          "combined": 0.901,
+          "struct": 0.93,
+          "token": 0.846,
+          "title": "Which investment type generates the most dividends on average",
+          "sql": "SELECT investment_type FROM ATOM_ENTITY_PORTFOLIO_HOLDING_001 GROUP BY investment_type ORDER BY AVG(dividends) DESC LIMI"
         }
       ]
     },
-    "consolidated_overall": 0.913,
+    "consolidated_overall": 0.99,
     "detail": {
       "table_familiarity": [
-        "\u2713 ATOM_ENTITY_PORTFOLIO_HOLDING_001"
+        "\u2713 familiar: ATOM_ENTITY_PORTFOLIO_HOLDING_001"
       ],
       "column_coverage": [
-        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 0.89 \u2713 (seen 80x)"
+        "ATOM_ENTITY_PORTFOLIO_HOLDING_001.INVESTMENT_TYPE: 1.00 \u2713 (seen 80x)"
       ],
       "join_pattern": [
         "No joins in query \u2014 N/A"
@@ -1234,7 +1243,7 @@
       "filter_familiarity": [],
       "filter_operator": [],
       "aggregation_pattern": [
-        "AVG(COST): 0.50 (seen 15x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
+        "AVG(COST): 1.00 (seen 15x on ATOM_ENTITY_PORTFOLIO_HOLDING_001)"
       ]
     }
   }
