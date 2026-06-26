@@ -15,9 +15,12 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 
 ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -27,6 +30,7 @@ import score_corpus             # noqa: E402
 st.set_page_config(page_title="SQL Query Confidence Scorer", page_icon="🧮", layout="wide")
 
 CORPUS_SCORES_PATH = ROOT / "reports" / "corpus_scores.json"
+DISCRIM_PATH = ROOT / "reports" / "discrimination_eval.json"
 
 # ---------------------------------------------------------------------------
 # Cached data
@@ -51,6 +55,26 @@ def corpus_scores():
     if not CORPUS_SCORES_PATH.exists():
         return None
     return load_corpus_scores(CORPUS_SCORES_PATH.stat().st_mtime)
+
+
+@st.cache_data(show_spinner=False)
+def load_discrim(_mtime: float):
+    return json.loads(DISCRIM_PATH.read_text(encoding="utf-8"))
+
+
+def discrim_frame():
+    """Labeled good-vs-bad set with a per-row consolidated score added.
+    Returns (DataFrame, meta) or (None, None) if the eval hasn't been generated."""
+    if not DISCRIM_PATH.exists():
+        return None, None
+    raw = load_discrim(DISCRIM_PATH.stat().st_mtime)
+    dd = pd.DataFrame(raw["rows"])
+    # The eval stores the three components; rebuild the blended consolidated score
+    # the same way the corpus does (llm is already normalized to 0–1 here, or None).
+    dd["consolidated"] = dd.apply(
+        lambda r: sq.consolidate(r["probability"], r["near_match"], r.get("llm")), axis=1)
+    dd["is_good"] = (dd["label"] == "good").astype(int)
+    return dd, raw
 
 
 STATS, CORPUS, SCHEMA, SECTIONS, RAW_N = load_refs()
@@ -97,6 +121,47 @@ def explain(why: str, how: str, insights: list[str]):
         st.markdown(f"**How to read it** — {how}")
         st.markdown("**Key insights**")
         st.markdown("\n".join(f"- {b}" for b in insights))
+
+
+def auc_score(good, bad) -> float:
+    """Probability a random good scores above a random bad (Mann–Whitney / ROC-AUC).
+    1.0 = perfect separation, 0.5 = no discrimination."""
+    g = np.asarray([v for v in good if v is not None], float)
+    b = np.asarray([v for v in bad if v is not None], float)
+    if g.size == 0 or b.size == 0:
+        return float("nan")
+    diff = g[:, None] - b[None, :]
+    return float(((diff > 0).sum() + 0.5 * (diff == 0).sum()) / (g.size * b.size))
+
+
+def logistic_fit(x, y, l2: float = 1.0, iters: int = 50):
+    """1-D logistic regression P(y=1 | x) via Newton–Raphson with a light ridge.
+
+    The ridge keeps the slope finite for perfectly-separable scores (e.g. Near-match,
+    AUC ≈ 1.0), where an unpenalized fit would diverge to a vertical step. Returns a
+    vectorized predict() over new x plus the standardized slope (a steepness proxy)."""
+    x = np.asarray(x, float)
+    y = np.asarray(y, float)
+    mu = x.mean()
+    sd = x.std() or 1.0
+    z = (x - mu) / sd
+    X = np.column_stack([np.ones_like(z), z])           # [intercept, slope]
+    b = np.zeros(2)
+    for _ in range(iters):
+        p = 1.0 / (1.0 + np.exp(-(X @ b)))
+        W = p * (1 - p) + 1e-9
+        H = X.T @ (X * W[:, None]) + np.diag([0.0, l2])   # penalize slope only
+        grad = X.T @ (y - p) - np.array([0.0, l2 * b[1]])
+        try:
+            b = b + np.linalg.solve(H, grad)
+        except np.linalg.LinAlgError:
+            break
+
+    def predict(xx):
+        zz = (np.asarray(xx, float) - mu) / sd
+        return 1.0 / (1.0 + np.exp(-(b[0] + b[1] * zz)))
+
+    return predict, float(b[1])
 
 
 # ---------------------------------------------------------------------------
@@ -148,9 +213,9 @@ with tab_score:
                "Live scoring with full, inline calculation detail.")
 
     sql = st.text_area("SQL query", key="sql_input", height=160)
-    go = st.button("▶ Score query", type="primary")
+    run_score = st.button("▶ Score query", type="primary")
 
-    if not (go and sql.strip()):
+    if not (run_score and sql.strip()):
         st.info("Enter a SQL query (or pick a sample from the sidebar) and click **Score query**.")
     else:
         info = sq.parse_query(sql)
@@ -610,8 +675,137 @@ with tab_dash:
             "than subtle real-world errors.)*",
         ])
 
-    # ---- 8. outliers ----
-    st.subheader("⑧ Lowest-scoring queries (inspect these)")
+    # ---- 8. sigmoid separation curves (discriminative power) ----
+    st.subheader("⑧ Sigmoid separation curves — how sharply each score tells good from bad")
+    st.caption("Logistic fit of P(query is *good*) against each score, over the **labeled "
+               "good-vs-bad set** (the corpus alone is all-good, so it can't show this). A steep "
+               "S-curve = sharp discrimination; a shallow line = the score barely separates the two. "
+               "Dots: good queries sit near the top, bad ones near the bottom.")
+    dd, draw = discrim_frame()
+    if dd is None:
+        st.info("No discrimination eval found. Generate it with "
+                "`.venv/bin/python scripts/eval_discrimination.py`.")
+    else:
+        sig_specs = [("probability", "Probability"), ("near_match", "Near-match"),
+                     ("llm", "LLM"), ("consolidated", "Consolidated")]
+        n_good = int((dd["is_good"] == 1).sum())
+        n_bad = int((dd["is_good"] == 0).sum())
+
+        # AUC + mean separation per score (drives titles and the notes below)
+        stats_by = {}
+        for col, lbl in sig_specs:
+            sub = dd[[col, "is_good"]].dropna(subset=[col])
+            gx = sub.loc[sub.is_good == 1, col].to_numpy()
+            bx = sub.loc[sub.is_good == 0, col].to_numpy()
+            stats_by[lbl] = {"auc": auc_score(gx, bx),
+                             "mean_good": float(gx.mean()) if gx.size else float("nan"),
+                             "mean_bad": float(bx.mean()) if bx.size else float("nan"),
+                             "col": col}
+
+        titles = [f"{lbl} · AUC {stats_by[lbl]['auc']:.2f}" for _, lbl in sig_specs]
+        fig_sig = make_subplots(rows=2, cols=2, subplot_titles=titles,
+                                horizontal_spacing=0.09, vertical_spacing=0.16)
+        rng = np.random.default_rng(0)      # deterministic point jitter across reruns
+        grid = np.linspace(0.0, 1.0, 200)
+        for i, (col, lbl) in enumerate(sig_specs):
+            r, c = i // 2 + 1, i % 2 + 1
+            sub = dd[[col, "is_good", "sql"]].dropna(subset=[col])
+            predict, _ = logistic_fit(sub[col].to_numpy(), sub["is_good"].to_numpy())
+            fig_sig.add_trace(go.Scatter(
+                x=grid, y=predict(grid), mode="lines", line=dict(color="#1f77b4", width=3),
+                showlegend=False,
+                hovertemplate="score=%{x:.2f}<br>P(good)=%{y:.2f}<extra></extra>"), row=r, col=c)
+            for is_good, base, color, name in ((1, 1.0, "#2ca02c", "good"),
+                                               (0, 0.0, "#d62728", "bad")):
+                pts = sub[sub.is_good == is_good]
+                yj = (base - rng.uniform(0.0, 0.06, len(pts))) if base == 1.0 \
+                    else (base + rng.uniform(0.0, 0.06, len(pts)))
+                fig_sig.add_trace(go.Scatter(
+                    x=pts[col], y=yj, mode="markers",
+                    marker=dict(color=color, size=7, opacity=0.75,
+                                line=dict(width=0.5, color="white")),
+                    name=name, legendgroup=name, showlegend=(i == 0),
+                    text=pts["sql"].str.slice(0, 90),
+                    hovertemplate="%{text}<br>" + lbl + "=%{x:.3f}<extra>" + name + "</extra>"),
+                    row=r, col=c)
+        fig_sig.update_xaxes(range=[-0.02, 1.02])
+        fig_sig.update_yaxes(range=[-0.12, 1.12])
+        fig_sig.update_layout(height=660, legend=dict(orientation="h", yanchor="bottom",
+                              y=1.07, xanchor="right", x=1))
+        st.plotly_chart(fig_sig)
+
+        ranked = sorted(stats_by.items(), key=lambda kv: kv[1]["auc"], reverse=True)
+        best_lbl, best = ranked[0]
+        worst_lbl, worst = ranked[-1]
+        cons = stats_by["Consolidated"]
+        explain(
+            "This is the clearest single answer to *“can a score tell a good query from a bad one?”* "
+            "We can't see that on the live corpus (every logged query is real/good), so we measure "
+            f"it against a labeled set of **{n_good} good + {n_bad} deliberately-broken** queries.",
+            "Each panel fits an S-curve: the score is on the x-axis, the height is the model's "
+            "estimated probability the query is *good*. **Green dots (good) cluster top-right, red "
+            "dots (bad) bottom-left.** A curve that snaps sharply from 0 to 1 separates cleanly; a "
+            "gentle slope means lots of overlap. **AUC** in each title = probability a random good "
+            "outscores a random bad (1.00 = perfect, 0.50 = coin-flip).",
+            [
+                f"**{best_lbl} discriminates best** (AUC {best['auc']:.2f}) — its S-curve is the "
+                "steepest, with good and bad barely overlapping.",
+                f"**{worst_lbl} is the weakest** (AUC {worst['auc']:.2f}): the shallowest curve and "
+                "the most green/red overlap, which is exactly why it carries the smallest weight in "
+                "the blend.",
+                f"**Consolidated lands at AUC {cons['auc']:.2f}** (good avg {cons['mean_good']:.2f} "
+                f"vs bad avg {cons['mean_bad']:.2f}) — blending three views keeps strong separation "
+                "while smoothing any single scorer's blind spot.",
+                "**Caveat:** these 'bad' queries are hand-crafted and likely easier to catch than "
+                "subtle real-world mistakes, so treat the AUCs as an upper bound on discrimination.",
+            ])
+
+    # ---- 9. good-vs-bad distribution overlay ----
+    st.subheader("⑨ Good vs bad — score distributions side by side")
+    st.caption("The same labeled set as a distribution view: for each score, known-good queries "
+               "(green) vs deliberately-broken ones (red). The less the two colors overlap, the "
+               "better that score separates good from bad. Hover any point for its SQL.")
+    if dd is None:
+        st.info("Run the discrimination eval to populate this view.")
+    else:
+        vmap = {"probability": "Probability", "near_match": "Near-match",
+                "llm": "LLM", "consolidated": "Consolidated"}
+        mm = (dd.melt(id_vars=["label", "sql"], value_vars=list(vmap),
+                      var_name="score", value_name="value").dropna(subset=["value"]))
+        mm["score"] = mm["score"].map(vmap)
+        mm["sql_short"] = mm["sql"].str.slice(0, 90)
+        fig_v = px.violin(
+            mm, x="score", y="value", color="label", box=True, points="all",
+            category_orders={"score": list(vmap.values()), "label": ["good", "bad"]},
+            color_discrete_map={"good": "#2ca02c", "bad": "#d62728"},
+            hover_data={"sql_short": True, "label": True, "score": False, "value": ":.3f"},
+            labels={"value": "score", "label": ""}, height=520, range_y=[-0.05, 1.05])
+        fig_v.update_layout(violinmode="group")
+        st.plotly_chart(fig_v)
+
+        gaps = {lbl: stats_by[lbl]["mean_good"] - stats_by[lbl]["mean_bad"] for _, lbl in sig_specs}
+        widest = max(gaps, key=gaps.get)
+        narrowest = min(gaps, key=gaps.get)
+        explain(
+            "A more intuitive companion to the S-curves: instead of a fitted line, it shows the raw "
+            "spread of good vs bad scores so a non-technical viewer can *see* the separation.",
+            "For each score there are two violins: **green = good queries, red = bad**. The fatter "
+            "part is where most queries land; the box marks the median and middle 50%. **Two violins "
+            "that sit far apart = the score separates well; violins that overlap = it doesn't.**",
+            [
+                f"**{widest} shows the widest good–bad gap** (means differ by {gaps[widest]:.2f}) — "
+                "its green and red violins barely touch.",
+                f"**{narrowest} overlaps the most** (gap {gaps[narrowest]:.2f}): good and bad scores "
+                "share a lot of range, so on its own it's the least decisive.",
+                "**Bad queries that score high are the dangerous ones** — a red point sitting up in "
+                "the green band is a flawed query a single scorer would have trusted; the blend and "
+                "the schema flags exist to catch exactly those.",
+                "**Read it with ⑧:** this shows *where the queries land*, the sigmoid shows *the "
+                "decision boundary* fitted through them.",
+            ])
+
+    # ---- 10. outliers (actionable review queue) ----
+    st.subheader("⑩ Lowest-scoring queries (inspect these)")
     out_cols = ["consolidated", "probability", "near_match", "llm", "complexity", "n_flags", "sql_short"]
     st.dataframe(dff.nsmallest(15, "consolidated")[out_cols], width="stretch", hide_index=True)
     explain(

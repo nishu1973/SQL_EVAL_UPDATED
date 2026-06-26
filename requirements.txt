@@ -2,6 +2,7 @@
 # Streamlit Community Cloud installs from this file automatically on deploy.
 streamlit>=1.40
 pandas>=2.0
+numpy>=1.24
 plotly>=6.0
 openai>=2.41
 python-dotenv>=1.2
